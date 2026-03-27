@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 
 const emptyGrid = Array(9).fill(null);
 
+// 🔥 Pattern-Datenbank (pro Species)
+const patternDB = {};
+
 const typeColors = {
   fire: "#e74c3c",
   water: "#3498db",
@@ -42,7 +45,7 @@ export default function App() {
   const [brushMode, setBrushMode] = useState(false);
 
   useEffect(() => {
-    fetch("https://pokeapi.co/api/v2/pokemon?limit=200")
+    fetch("https://pokeapi.co/api/v2/pokemon?limit=300")
       .then(res => res.json())
       .then(data => setPokemonList(data.results));
   }, []);
@@ -51,6 +54,7 @@ export default function App() {
     p.name.toLowerCase().includes(search.toLowerCase())
   );
 
+  // 🔹 Pattern → relative offsets
   const getOffsets = (pattern) => {
     const active = pattern.map((v, i) => (v ? i : null)).filter(v => v !== null);
     if (active.length === 0) return [];
@@ -77,12 +81,14 @@ export default function App() {
     return nr * 3 + nc;
   };
 
+  // 🔹 Grid platzieren
   const placeOnGrid = (index) => {
     if (!selected) return;
 
     const offsets = getOffsets(selected.pattern);
     const newGrid = [...grid];
 
+    // entfernen vorheriger Platz
     for (let i = 0; i < newGrid.length; i++) {
       if (newGrid[i]?.id === selected.id) newGrid[i] = null;
     }
@@ -90,14 +96,14 @@ export default function App() {
     for (let o of offsets) {
       const pos = getGridIndex(index, o);
 
-      if (pos === null) return setMessage("Muster passt nicht");
-      if (newGrid[pos]) return setMessage("Platz belegt");
+      if (pos === null) return setMessage("Muster passt nicht ins Grid");
+      if (newGrid[pos]) return setMessage("Platz bereits belegt");
 
       const neighbors = [pos - 1, pos + 1, pos - 3, pos + 3];
       for (let n of neighbors) {
         if (n >= 0 && n < 9 && newGrid[n]) {
           if (newGrid[n].color === selected.color) {
-            return setMessage("Farben-Konflikt");
+            return setMessage("Zwei gleiche Typen nebeneinander!");
           }
         }
       }
@@ -112,17 +118,15 @@ export default function App() {
     setMessage("");
   };
 
-  const removeFromTeam = (pokemon) => {
-    setTeam(team.filter(p => p.id !== pokemon.id));
-    setBox([...box, pokemon]);
-    setGrid(grid.map(c => (c?.id === pokemon.id ? null : c)));
-  };
-
+  // 🔹 Fangen
   const catchPokemon = async () => {
     if (!selectedPokemon || !nickname) return;
 
     const res = await fetch(selectedPokemon.url);
     const data = await res.json();
+
+    const basePattern =
+      patternDB[data.name] || pattern;
 
     const newPokemon = {
       id: Date.now(),
@@ -130,7 +134,9 @@ export default function App() {
       nickname,
       sprite: data.sprites.front_default,
       color: typeColors[data.types[0].type.name] || "gray",
-      pattern
+      pattern: basePattern,
+      eraseUses: 0,
+      freeEraseUses: 0
     };
 
     setBox([...box, newPokemon]);
@@ -140,29 +146,46 @@ export default function App() {
     setSelectedPokemon(null);
   };
 
+  // 🔹 Team
   const moveToTeam = (p) => {
     if (team.length >= 6) return;
     setTeam([...team, p]);
     setBox(box.filter(x => x.id !== p.id));
   };
 
+  const removeFromTeam = (pokemon) => {
+    setTeam(team.filter(p => p.id !== pokemon.id));
+    setBox([...box, pokemon]);
+    setGrid(grid.map(c => (c?.id === pokemon.id ? null : c)));
+  };
+
+  // 🔹 Punkte
   const addPoint = () => {
     if (points < 3) setPoints(points + 1);
   };
 
+  // 🔹 Radiergummi
   const eraseTile = (pokemon, index) => {
     if (!eraseMode) return;
 
     const count = pokemon.pattern.filter(v => v).length;
-    if (count <= 1 || points < 1) return;
+    if (count <= 1) return;
+
+    if (pokemon.freeEraseUses > 0) {
+      pokemon.freeEraseUses--;
+    } else {
+      if (points < 1) return;
+      setPoints(points - 1);
+      pokemon.eraseUses++;
+    }
 
     pokemon.pattern[index] = false;
 
-    setPoints(points - 1);
     setEraseMode(false);
     setTeam([...team]);
   };
 
+  // 🔹 Farbe ändern
   const changeColor = (pokemon, color) => {
     if (points < 2) return;
 
@@ -172,6 +195,7 @@ export default function App() {
     setTeam([...team]);
   };
 
+  // 🔹 Entwicklung
   const handleEvolution = async (pokemon, evo) => {
     const res = await fetch(evo.url);
     const data = await res.json();
@@ -181,12 +205,25 @@ export default function App() {
 
     setGrid(grid.map(c => (c?.id === pokemon.id ? null : c)));
 
-    setPatternEditId(pokemon.id);
+    pokemon.pattern = Array(9).fill(false);
+
+    pokemon.freeEraseUses = pokemon.eraseUses || 0;
+
     setPattern(Array(9).fill(false));
+    setPatternEditId(pokemon.id);
+
+    setMessage(
+      `Neues Muster nötig! ${pokemon.freeEraseUses}x Radiergummi gratis`
+    );
+
+    setEvolvingId(null);
   };
 
+  // 🔹 Pattern speichern + DB
   const savePattern = (pokemon) => {
     pokemon.pattern = pattern;
+
+    patternDB[pokemon.name] = pattern;
 
     setPatternEditId(null);
     setPattern(Array(9).fill(false));
@@ -276,6 +313,23 @@ export default function App() {
               <div>
                 <button onClick={() => removeFromTeam(p)}>❌</button>
 
+                <button onClick={() =>
+                  setEvolvingId(evolvingId === p.id ? null : p.id)
+                }>
+                  ⬆️
+                </button>
+
+                {evolvingId === p.id && (
+                  <div>
+                    <input value={search} onChange={(e) => setSearch(e.target.value)} />
+                    {filtered.slice(0, 5).map(evo => (
+                      <div key={evo.name} onClick={() => handleEvolution(p, evo)}>
+                        {evo.name}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {colorPickerId === p.id && (
                   <div>
                     {Object.entries(typeColors).map(([t, c]) => (
@@ -292,19 +346,6 @@ export default function App() {
                           cursor: "pointer"
                         }}
                       />
-                    ))}
-                  </div>
-                )}
-
-                <button onClick={() => setEvolvingId(p.id)}>⬆️</button>
-
-                {evolvingId === p.id && (
-                  <div>
-                    <input value={search} onChange={(e) => setSearch(e.target.value)} />
-                    {filtered.slice(0, 5).map(evo => (
-                      <div key={evo.name} onClick={() => handleEvolution(p, evo)}>
-                        {evo.name}
-                      </div>
                     ))}
                   </div>
                 )}
@@ -347,6 +388,7 @@ export default function App() {
         </div>
       ))}
 
+      {/* CATCH */}
       <button onClick={() => setShowCatch(!showCatch)}>
         Catch Pokemon
       </button>
