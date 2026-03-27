@@ -281,38 +281,40 @@ export default function App() {
               key={p.name}
               style={{
                 display: "flex",
+                justifyContent: "space-between",
                 alignItems: "center",
-                gap: 10,
-                cursor: "pointer"
-              }}
-              onMouseEnter={addHover}
-              onMouseLeave={removeHover}
-              onClick={() => {
-                setSelectedPokemon(p);
-                setNickname("");
+                padding: "5px 0"
               }}
             >
-              <span style={{
-                fontWeight: selectedPokemon?.name === p.name ? "bold" : "normal"
-              }}>
+              {/* Name */}
+              <span
+                style={{
+                  cursor: "pointer",
+                  fontWeight: selectedPokemon?.name === p.name ? "bold" : "normal"
+                }}
+                onMouseEnter={addHover}
+                onMouseLeave={removeHover}
+                onClick={() => {
+                  setSelectedPokemon(p);
+                  setNickname("");
+                }}
+              >
                 {p.name}
               </span>
 
+              {/* RECHTS: Eingabe */}
               {selectedPokemon?.name === p.name && (
-                <>
+                <div style={{ display: "flex", gap: 10 }}>
                   <input
                     placeholder="Nickname..."
                     value={nickname}
                     onChange={(e) => setNickname(e.target.value)}
                   />
 
-                  <button onClick={(e) => {
-                    e.stopPropagation();
-                    catchPokemon();
-                  }}>
+                  <button onClick={() => catchPokemon()}>
                     Weiter
                   </button>
-                </>
+                </div>
               )}
             </div>
           ))}
