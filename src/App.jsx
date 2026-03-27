@@ -31,7 +31,7 @@ export default function App() {
   const [selectedPokemon, setSelectedPokemon] = useState(null);
   const [nickname, setNickname] = useState("");
 
-  const [pattern, setPattern] = useState(Array(9).fill(false));
+  const [pattern: [...pattern], setPattern] = useState(Array(9).fill(false));
   const [requiredTiles, setRequiredTiles] = useState(1);
   const [patternModal, setPatternModal] = useState(null);
 
@@ -184,7 +184,7 @@ const newPokemon = {
   name: p.name,
   nickname,
   sprite: p.sprites.front_default,
-  pattern,
+  pattern: [...pattern],
   color: typeColors[p.types[0].type.name] || "gray",
   eraserUsed: patternModal.eraserUsed || 0
 };
@@ -469,7 +469,7 @@ setSpeciesPatterns(prev => ({
           name: p.name,
           nickname: patternModal.nickname,
           sprite: p.sprites.front_default,
-          pattern,
+          pattern: [...pattern],
           color: typeColors[p.types[0].type.name] || "gray",
 eraserUsed: patternModal.eraserUsed || 0
         };
@@ -545,11 +545,11 @@ const savedPattern = speciesPatterns[data.name];
 if (savedPattern) {
   // ✅ Muster existiert schon → direkt entwickeln
   const newPokemon = {
-    id: evoModal.id,
+    id: Date.now(),
     name: data.name,
     nickname: evoModal.nickname,
     sprite: data.sprites.front_default,
-    pattern: savedPattern,
+    pattern: savedpattern: [...pattern],
     color: typeColors[data.types[0].type.name] || "gray",
     eraserUsed: evoModal.eraserUsed || 0
   };
