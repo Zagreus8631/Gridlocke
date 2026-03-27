@@ -38,7 +38,6 @@ export default function App() {
   const [patternModal, setPatternModal] = useState(null);
 
   const [eraseMode, setEraseMode] = useState(false);
-  const [brushMode, setBrushMode] = useState(false);
 
   useEffect(() => {
     fetch("https://pokeapi.co/api/v2/pokemon?limit=200")
@@ -137,9 +136,7 @@ export default function App() {
       nickname: patternModal.nickname,
       sprite: p.sprites.front_default,
       color: typeColors[p.types[0].type.name] || "gray",
-      pattern,
-      eraseUses: 0,
-      freeEraseUses: 0
+      pattern
     };
 
     patternDB[p.name] = pattern;
@@ -152,25 +149,6 @@ export default function App() {
     setSelectedPokemon(null);
   };
 
-  const eraseTile = (pokemon, index) => {
-    if (!eraseMode) return;
-
-    const count = pokemon.pattern.filter(v => v).length;
-    if (count <= 1) return;
-
-    if (points < 1 && pokemon.freeEraseUses <= 0) return;
-
-    if (pokemon.freeEraseUses > 0) {
-      pokemon.freeEraseUses--;
-    } else {
-      setPoints(points - 1);
-    }
-
-    pokemon.pattern[index] = false;
-    setTeam([...team]);
-    setGrid([...grid]);
-  };
-
   return (
     <div style={{ padding: 20 }}>
       <h1>Pokemon Grid</h1>
@@ -178,8 +156,6 @@ export default function App() {
       <h2>
         Punkte: {points}
         <button onClick={() => setPoints(Math.min(3, points + 1))}>+1</button>
-        <button onClick={() => setEraseMode(!eraseMode)}>🧽</button>
-        <button onClick={() => setBrushMode(!brushMode)}>🖌️</button>
       </h2>
 
       {message && <p style={{ color: "red" }}>{message}</p>}
@@ -193,20 +169,13 @@ export default function App() {
               <div
                 key={i}
                 onClick={() => removeFromGrid(i)}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setHoverIndex(i);
-                }}
+                onDragOver={(e) => e.preventDefault()}
                 onDrop={() => placeOnGrid(i)}
                 style={{
                   width: 80,
                   height: 80,
                   border: "1px solid black",
-                  background: cell
-                    ? cell.color
-                    : hoverIndex === i
-                    ? "#ddd"
-                    : "white"
+                  background: cell ? cell.color : "white"
                 }}
               >
                 {cell && <img src={cell.sprite} width={40} />}
@@ -219,26 +188,9 @@ export default function App() {
         <div>
           <h2>Team</h2>
           {team.map(p => (
-            <div key={p.id} style={{ display: "flex", gap: 10 }}>
-              <div draggable onDragStart={() => setSelected(p)}>
-                <img src={p.sprite} width={40} />
-                <div>{p.nickname}</div>
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3,15px)" }}>
-                {p.pattern.map((val, i) => (
-                  <div
-                    key={i}
-                    onClick={() => eraseMode && eraseTile(p, i)}
-                    style={{
-                      width: 15,
-                      height: 15,
-                      background: val ? p.color : "#eee",
-                      border: "1px solid black"
-                    }}
-                  />
-                ))}
-              </div>
+            <div key={p.id} draggable onDragStart={() => setSelected(p)}>
+              <img src={p.sprite} width={40} />
+              <div>{p.nickname}</div>
             </div>
           ))}
         </div>
@@ -253,14 +205,12 @@ export default function App() {
 
           <span
             style={{ cursor: "pointer" }}
-            onMouseEnter={addHover}
-            onMouseLeave={removeHover}
             onClick={() => {
               if (team.find(t => t.id === p.id)) return;
               if (team.length >= 6) return;
 
               setTeam([...team, p]);
-              setBox(box.filter(b => b.id !== p.id)); // 🔥 FIX
+              setBox(box.filter(b => b.id !== p.id));
             }}
           >
             → To Team
@@ -277,9 +227,9 @@ export default function App() {
         <div>
           <input value={search} onChange={(e) => setSearch(e.target.value)} />
 
-          {filtered.slice(0, 10).map((p, index) => {
-            const id = index + 1;
-            const sprite = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
+          {filtered.slice(0, 10).map(p => {
+            const id = p.url.split("/").filter(Boolean).pop();
+            const sprite = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-viii/icons/${id}.png`;
 
             return (
               <div
@@ -299,14 +249,12 @@ export default function App() {
                     alignItems: "center",
                     gap: 8
                   }}
-                  onMouseEnter={addHover}
-                  onMouseLeave={removeHover}
                   onClick={() => {
                     setSelectedPokemon(p);
                     setNickname("");
                   }}
                 >
-                  <img src={sprite} width={30} />
+                  <img src={sprite} width={40} />
                   {p.name}
                 </span>
 
