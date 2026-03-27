@@ -11,11 +11,6 @@ const typeColors = {
   normal: "#bdc3c7"
 };
 
-// 🔥 Helper für klickbare Texte
-const clickable = {
-  cursor: "pointer"
-};
-
 const addHover = (e) => e.target.style.textDecoration = "underline";
 const removeHover = (e) => e.target.style.textDecoration = "none";
 
@@ -91,13 +86,13 @@ export default function App() {
 
     for (let o of offsets) {
       const pos = getGridIndex(index, o);
-      if (pos === null || newGrid[pos]) return setMessage("Ungültige Position");
+      if (pos === null || newGrid[pos]) return setMessage("Platz belegt");
 
       const neighbors = [pos - 1, pos + 1, pos - 3, pos + 3];
       for (let n of neighbors) {
         if (n >= 0 && n < 9 && newGrid[n]) {
           if (newGrid[n].color === selected.color)
-            return setMessage("Typ-Konflikt");
+            return setMessage("Gleicher Typ nebeneinander");
         }
       }
     }
@@ -114,7 +109,6 @@ export default function App() {
   const removeFromGrid = (index) => {
     const target = grid[index];
     if (!target) return;
-
     setGrid(grid.map(c => (c?.id === target.id ? null : c)));
   };
 
@@ -127,10 +121,7 @@ export default function App() {
     const tiles = getEVTiles(data.stats);
 
     setRequiredTiles(tiles);
-    setPatternModal({
-      data,
-      nickname
-    });
+    setPatternModal({ data, nickname });
   };
 
   const confirmPattern = () => {
@@ -167,24 +158,15 @@ export default function App() {
     const count = pokemon.pattern.filter(v => v).length;
     if (count <= 1) return;
 
+    if (points < 1 && pokemon.freeEraseUses <= 0) return;
+
     if (pokemon.freeEraseUses > 0) {
       pokemon.freeEraseUses--;
-      if (pokemon.freeEraseUses === 0) setMessage("");
     } else {
-      if (points < 1) return;
       setPoints(points - 1);
     }
 
     pokemon.pattern[index] = false;
-    setTeam([...team]);
-    setGrid([...grid]);
-  };
-
-  const changeColor = (pokemon, color) => {
-    if (points < 2) return;
-
-    pokemon.color = color;
-    setPoints(points - 2);
     setTeam([...team]);
     setGrid([...grid]);
   };
@@ -196,20 +178,14 @@ export default function App() {
       <h2>
         Punkte: {points}
         <button onClick={() => setPoints(Math.min(3, points + 1))}>+1</button>
-
-        <button onClick={() => setEraseMode(!eraseMode)}>
-          🧽 {eraseMode && "ON"}
-        </button>
-
-        <button onClick={() => setBrushMode(!brushMode)}>
-          🖌️ {brushMode && "ON"}
-        </button>
+        <button onClick={() => setEraseMode(!eraseMode)}>🧽</button>
+        <button onClick={() => setBrushMode(!brushMode)}>🖌️</button>
       </h2>
 
       {message && <p style={{ color: "red" }}>{message}</p>}
 
       <div style={{ display: "flex", gap: 40 }}>
-
+        
         {/* GRID */}
         <div>
           <h2>Grid</h2>
@@ -272,34 +248,22 @@ export default function App() {
       {/* BOX */}
       <h2>Box</h2>
       {box.map(p => (
-  <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-    
-    <img src={p.sprite} width={40} />
+        <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <img src={p.sprite} width={40} />
 
-    <div>{p.nickname}</div>
+          <div>{p.nickname}</div>
 
-    <span
-      style={{ cursor: "pointer" }}
-      onMouseEnter={(e) => e.target.style.textDecoration = "underline"}
-      onMouseLeave={(e) => e.target.style.textDecoration = "none"}
-      onClick={() => {
-        if (team.find(t => t.id === p.id)) return;
-        if (team.length >= 6) return;
-        setTeam([...team, p]);
-      }}
-    >
-      → To Team
-    </span>
-
-  </div>
-))}
           <span
-            style={clickable}
+            style={{ cursor: "pointer" }}
             onMouseEnter={addHover}
             onMouseLeave={removeHover}
-            onClick={() => setTeam([...team, p])}
+            onClick={() => {
+              if (team.find(t => t.id === p.id)) return;
+              if (team.length >= 6) return;
+              setTeam([...team, p]);
+            }}
           >
-            {" "}→ To Team
+            → To Team
           </span>
         </div>
       ))}
@@ -316,7 +280,7 @@ export default function App() {
           {filtered.slice(0, 10).map(p => (
             <div
               key={p.name}
-              style={clickable}
+              style={{ cursor: "pointer" }}
               onMouseEnter={addHover}
               onMouseLeave={removeHover}
               onClick={() => setSelectedPokemon(p)}
@@ -341,7 +305,7 @@ export default function App() {
         </div>
       )}
 
-      {/* PATTERN MODAL */}
+      {/* PATTERN */}
       {patternModal && (
         <div style={{
           position: "fixed",
