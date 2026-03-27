@@ -19,10 +19,11 @@ export default function App() {
   const [pokemonList, setPokemonList] = useState([]);
 
   const [selected, setSelected] = useState(null);
-  const [dragging, setDragging] = useState(null);
   const [hoverIndex, setHoverIndex] = useState(null);
+  const [dragging, setDragging] = useState(null);
 
-  const [points, setPoints] = useState(3);
+  const [points, setPoints] = useState(0);
+
   const [brush, setBrush] = useState(false);
   const [eraser, setEraser] = useState(false);
 
@@ -78,7 +79,6 @@ export default function App() {
 
     let newGrid = [...grid];
 
-    // remove old placement
     newGrid = newGrid.map(c => (c?.id === pokemon.id ? null : c));
 
     const offsets = getOffsets(pokemon.pattern);
@@ -97,13 +97,11 @@ export default function App() {
     });
 
     setGrid(newGrid);
-    setMessage("");
   };
 
   const handleGridClick = (index) => {
     const cell = grid[index];
 
-    // Radiergummi
     if (eraser && cell) {
       if (points <= 0) return;
 
@@ -112,13 +110,17 @@ export default function App() {
 
       setPoints(points - 1);
 
+      const newPattern = [...cell.pattern];
+      newPattern[index] = false;
+
+      updatePokemon(cell.id, { pattern: newPattern });
+
       let newGrid = [...grid];
       newGrid[index] = null;
       setGrid(newGrid);
       return;
     }
 
-    // aufnehmen zum verschieben
     if (cell) {
       setDragging(cell);
       setSelected(cell);
@@ -126,6 +128,11 @@ export default function App() {
       placeOnGrid(index, dragging);
       setDragging(null);
     }
+  };
+
+  const updatePokemon = (id, changes) => {
+    setTeam(team.map(p => p.id === id ? { ...p, ...changes } : p));
+    setBox(box.map(p => p.id === id ? { ...p, ...changes } : p));
   };
 
   const catchPokemon = async () => {
@@ -153,6 +160,7 @@ export default function App() {
       nickname,
       sprite: p.sprites.front_default,
       pattern,
+      eraserUsed: 0,
       color: typeColors[p.types[0].type.name] || "gray"
     };
 
@@ -168,10 +176,15 @@ export default function App() {
     <div style={{ padding: 20 }}>
       <h1>Pokemon Grid</h1>
 
-      <h2>Punkte: {points}</h2>
+      <h2>
+        Punkte: {points}
+        <button onClick={() => setPoints(p => Math.min(3, p + 1))}>
+          +1
+        </button>
+      </h2>
 
-      <button onClick={() => setBrush(!brush)}>🖌️ Brush</button>
-      <button onClick={() => setEraser(!eraser)}>🧽 Eraser</button>
+      <button onClick={() => setBrush(!brush)}>🖌️</button>
+      <button onClick={() => setEraser(!eraser)}>🧽</button>
 
       {message && <p style={{ color: "red" }}>{message}</p>}
 
@@ -189,8 +202,6 @@ export default function App() {
                   .filter(v => v !== null);
               }
 
-              const isPreview = previewCells.includes(i);
-
               return (
                 <div
                   key={i}
@@ -207,10 +218,10 @@ export default function App() {
                     width: 80,
                     height: 80,
                     border: "1px solid black",
-                    background: cell
-                      ? cell.color
-                      : isPreview
+                    background: previewCells.includes(i)
                       ? "rgba(0,0,0,0.3)"
+                      : cell
+                      ? cell.color
                       : "white"
                   }}
                 >
@@ -224,42 +235,46 @@ export default function App() {
         {/* TEAM */}
         <div>
           <h2>Team</h2>
-          {team.map(p => (
-            <div key={p.id} draggable onDragStart={() => setSelected(p)}>
-              <img src={p.sprite} width={40} />
-              <div>{p.nickname}</div>
 
-              {/* Muster Vorschau */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3,10px)" }}>
-                {p.pattern.map((val, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      width: 10,
-                      height: 10,
-                      background: val ? p.color : "#eee"
-                    }}
-                  />
-                ))}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2, 1fr)",
+            gap: 10
+          }}>
+            {team.map(p => (
+              <div key={p.id}>
+                <img src={p.sprite} width={40} />
+                <div>{p.nickname}</div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3,10px)" }}>
+                  {p.pattern.map((val, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        width: 10,
+                        height: 10,
+                        background: val ? p.color : "#eee"
+                      }}
+                    />
+                  ))}
+                </div>
+
+                <button onClick={() => {
+                  setBox([...box, p]);
+                  setTeam(team.filter(t => t.id !== p.id));
+                }}>
+                  → Box
+                </button>
+
+                <button onClick={() => {
+                  setGraveyard([...graveyard, p]);
+                  setTeam(team.filter(t => t.id !== p.id));
+                }}>
+                  💀
+                </button>
               </div>
-
-              <button onClick={() => {
-                setBox([...box, p]);
-                setTeam(team.filter(t => t.id !== p.id));
-                setGrid(grid.map(c => (c?.id === p.id ? null : c)));
-              }}>
-                → Box
-              </button>
-
-              <button onClick={() => {
-                setGraveyard([...graveyard, p]);
-                setTeam(team.filter(t => t.id !== p.id));
-                setGrid(grid.map(c => (c?.id === p.id ? null : c)));
-              }}>
-                💀
-              </button>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 
