@@ -352,6 +352,85 @@ export default function App() {
       {graveyard.map(p => (
         <div key={p.id}>{p.nickname}</div>
       ))}
+{/* PATTERN MODAL */}
+{patternModal && (
+  <div style={{
+    position: "fixed",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    background: "rgba(0,0,0,0.5)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center"
+  }}>
+    <div style={{
+      background: "white",
+      padding: 20,
+      borderRadius: 10
+    }}>
+      <h3>Muster festlegen ({requiredTiles} Felder)</h3>
+
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(3,40px)",
+        gap: 5
+      }}>
+        {pattern.map((val, i) => (
+          <div
+            key={i}
+            onClick={() => {
+              const count = pattern.filter(v => v).length;
+              if (!val && count >= requiredTiles) return;
+
+              const newPattern = [...pattern];
+              newPattern[i] = !newPattern[i];
+              setPattern(newPattern);
+            }}
+            style={{
+              width: 40,
+              height: 40,
+              border: "1px solid black",
+              background: val ? "black" : "white",
+              cursor: "pointer"
+            }}
+          />
+        ))}
+      </div>
+
+      <button onClick={() => {
+        const count = pattern.filter(v => v).length;
+
+        if (count !== requiredTiles) {
+          alert(`Du musst genau ${requiredTiles} Felder wählen!`);
+          return;
+        }
+
+        const p = patternModal.data;
+
+        const newPokemon = {
+          id: Date.now(),
+          name: p.name,
+          nickname: patternModal.nickname,
+          sprite: p.sprites.front_default,
+          pattern,
+          color: typeColors[p.types[0].type.name] || "gray"
+        };
+
+        setBox([...box, newPokemon]);
+
+        // Reset
+        setPattern(Array(9).fill(false));
+        setPatternModal(null);
+        setSelectedPokemon(null);
+        setNickname("");
+      }}>
+        Bestätigen
+      </button>
+    </div>
+  </div>
+)}
     </div>
   );
 }
