@@ -177,7 +177,7 @@ if (!pokemonInTeam || points <= 0) return;
 setTeam(prev =>
   prev.map(t =>
     t.id === cell.id
-      ? { ...t, eraserDebt: (t.eraserDebt || 0) + 1 }
+      ? { ...t, eraserDebt: Math.max(0, (t.eraserDebt || 0) - 1) }
       : t
   )
 );
@@ -511,7 +511,6 @@ setSpeciesPatterns(prev => ({
         const newPokemon = {
           id: Date.now(),
           name: p.name,
- 3,
           nickname: patternModal.nickname,
           sprite: p.sprites.front_default,
           pattern: [...pattern],
@@ -591,7 +590,6 @@ if (savedPattern) {
   const newPokemon = {
     id: Date.now(),
     name: data.name,
- 3,
     nickname: evoModal.nickname || evoModal.name,
     sprite: data.sprites.front_default,
     pattern: [...savedPattern],
