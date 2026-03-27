@@ -229,49 +229,67 @@ export default function App() {
             gridTemplateColumns: "repeat(2, 1fr)",
             gap: 10
           }}>
-            {team.map(p => (
-              <div
-                key={p.id}
-                draggable
-                onDragStart={() => {
-                  setDragging(p);
-                  setSelected(p);
-                }}
-              >
-                <img src={p.sprite} width={40} />
-                <div>{p.nickname}</div>
+            <div>
+  <h2>Team</h2>
 
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3,10px)" }}>
-                  {p.pattern.map((val, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        width: 10,
-                        height: 10,
-                        background: val ? p.color : "#eee"
-                      }}
-                    />
-                  ))}
-                </div>
+  <div style={{
+    display: "grid",
+    gridTemplateColumns: "repeat(2, 1fr)",
+    gap: 10
+  }}>
+    {team.map(p => (
+      <div key={p.id} draggable onDragStart={() => setSelected(p)}
+        style={{ border: "1px solid #ccc", padding: 5 }}
+      >
+        <img src={p.sprite} width={40} />
+        <div>{p.nickname}</div>
 
-                <button onClick={() => {
-                  setBox([...box, p]);
-                  setTeam(team.filter(t => t.id !== p.id));
-                }}>
-                  → Box
-                </button>
-
-                <button onClick={() => {
-                  setGraveyard([...graveyard, p]);
-                  setTeam(team.filter(t => t.id !== p.id));
-                }}>
-                  💀
-                </button>
-              </div>
-            ))}
-          </div>
+        {/* Muster Vorschau */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,10px)" }}>
+          {p.pattern.map((val, i) => (
+            <div
+              key={i}
+              style={{
+                width: 10,
+                height: 10,
+                background: val ? p.color : "#eee"
+              }}
+            />
+          ))}
         </div>
+
+        {/* 🔥 NEU: Entwicklung */}
+        <button onClick={() => {
+          const evo = prompt("Neue Entwicklung eingeben:");
+          if (!evo) return;
+
+          const updated = { ...p, name: evo };
+
+          setTeam(team.map(t => t.id === p.id ? updated : t));
+          setGrid(grid.map(c => c?.id === p.id ? updated : c));
+        }}>
+          ⬆️ Entwickeln
+        </button>
+
+        <button onClick={() => {
+          setBox([...box, p]);
+          setTeam(team.filter(t => t.id !== p.id));
+          setGrid(grid.map(c => (c?.id === p.id ? null : c)));
+        }}>
+          → Box
+        </button>
+
+        <button onClick={() => {
+          setGraveyard([...graveyard, p]);
+          setTeam(team.filter(t => t.id !== p.id));
+          setGrid(grid.map(c => (c?.id === p.id ? null : c)));
+        }}>
+          💀
+        </button>
       </div>
+    ))}
+  </div>
+</div>
 
       {/* BOX */}
       <h2>Box</h2>
