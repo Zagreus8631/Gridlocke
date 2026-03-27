@@ -24,8 +24,6 @@ export default function App() {
   const [selected, setSelected] = useState(null);
 
   const [showCatch, setShowCatch] = useState(false);
-  const [showEvolve, setShowEvolve] = useState(null);
-
   const [search, setSearch] = useState("");
   const [selectedPokemon, setSelectedPokemon] = useState(null);
 
@@ -35,7 +33,8 @@ export default function App() {
   const [points, setPoints] = useState(0);
   const [message, setMessage] = useState("");
 
-  // Load Pokémon
+  const [evolvingId, setEvolvingId] = useState(null);
+
   useEffect(() => {
     fetch("https://pokeapi.co/api/v2/pokemon?limit=200")
       .then(res => res.json())
@@ -46,78 +45,83 @@ export default function App() {
     p.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  // Pattern → Indexe
-  const patternToOffsets = (pattern) => {
-    return pattern
-      .map((val, i) => (val ? i : null))
+  // 👉 Pattern → relative offsets (wichtig!)
+  const getOffsets = (pattern) => {
+    const active = pattern
+      .map((v, i) => (v ? i : null))
       .filter(v => v !== null);
+
+    if (active.length === 0) return [];
+
+    const base = active[0];
+
+    return active.map(i => {
+      const r = Math.floor(i / 3);
+      const c = i % 3;
+
+      const br = Math.floor(base / 3);
+      const bc = base % 3;
+
+      return [(r - br), (c - bc)];
+    });
   };
 
-  const getPosition = (start, offset) => {
-    const row = Math.floor(start / 3);
-    const col = start % 3;
+  const getGridIndex = (start, offset) => {
+    const sr = Math.floor(start / 3);
+    const sc = start % 3;
 
-    const oRow = Math.floor(offset / 3);
-    const oCol = offset % 3;
+    const nr = sr + offset[0];
+    const nc = sc + offset[1];
 
-    const newRow = row + oRow;
-    const newCol = col + oCol;
+    if (nr < 0 || nr > 2 || nc < 0 || nc > 2) return null;
 
-    if (newRow > 2 || newCol > 2) return null;
-
-    return newRow * 3 + newCol;
-  };
-
-  const isValidPlacement = (patternOffsets, startIndex, pokemon) => {
-    for (let p of patternOffsets) {
-      const pos = getPosition(startIndex, p);
-
-      if (pos === null) {
-        setMessage("Muster passt nicht ins Grid");
-        return false;
-      }
-
-      if (grid[pos]) {
-        setMessage("Dieser Platz ist bereits belegt");
-        return false;
-      }
-
-      const neighbors = [pos - 1, pos + 1, pos - 3, pos + 3];
-
-      for (let n of neighbors) {
-        if (n >= 0 && n < 9 && grid[n]) {
-          if (grid[n].color === pokemon.color) {
-            setMessage("Gleiche Farben dürfen nicht nebeneinander sein");
-            return false;
-          }
-        }
-      }
-    }
-
-    setMessage("");
-    return true;
+    return nr * 3 + nc;
   };
 
   const placeOnGrid = (index) => {
     if (!selected) return;
 
-    const offsets = patternToOffsets(selected.pattern);
-
-    if (!isValidPlacement(offsets, index, selected)) return;
+    const offsets = getOffsets(selected.pattern);
 
     const newGrid = [...grid];
 
-    offsets.forEach(p => {
-      const pos = getPosition(index, p);
+    for (let o of offsets) {
+      const pos = getGridIndex(index, o);
+
+      if (pos === null) {
+        setMessage("Muster passt nicht ins Grid");
+        return;
+      }
+
+      if (newGrid[pos]) {
+        setMessage("Platz belegt");
+        return;
+      }
+
+      const neighbors = [pos - 1, pos + 1, pos - 3, pos + 3];
+
+      for (let n of neighbors) {
+        if (n >= 0 && n < 9 && newGrid[n]) {
+          if (newGrid[n].color === selected.color) {
+            setMessage("Gleiche Farben nebeneinander!");
+            return;
+          }
+        }
+      }
+    }
+
+    offsets.forEach(o => {
+      const pos = getGridIndex(index, o);
       newGrid[pos] = selected;
     });
 
     setGrid(newGrid);
+    setMessage("");
   };
 
-  const removeFromTeam = (pokemonId) => {
-    setTeam(prev => prev.filter(p => p.id !== pokemonId));
-    setGrid(prev => prev.map(c => (c?.id === pokemonId ? null : c)));
+  const removeFromTeam = (id) => {
+    setTeam(team.filter(p => p.id !== id));
+    setGrid(grid.map(c => (c?.id === id ? null : c)));
   };
 
   const catchPokemon = async () => {
@@ -126,19 +130,16 @@ export default function App() {
     const res = await fetch(selectedPokemon.url);
     const data = await res.json();
 
-    const offsets = patternToOffsets(pattern);
-
     const newPokemon = {
       id: Date.now(),
       name: data.name,
       nickname,
       sprite: data.sprites.front_default,
       color: typeColors[data.types[0].type.name] || "gray",
-      pattern,
-      usedPoints: 0
+      pattern
     };
 
-    setBox(prev => [...prev, newPokemon]);
+    setBox([...box, newPokemon]);
 
     setPattern(Array(9).fill(false));
     setNickname("");
@@ -147,76 +148,67 @@ export default function App() {
 
   const moveToTeam = (p) => {
     if (team.length >= 6) return;
-    setTeam(prev => [...prev, p]);
-    setBox(prev => prev.filter(x => x.id !== p.id));
+    setTeam([...team, p]);
+    setBox(box.filter(x => x.id !== p.id));
   };
 
   const addPoint = () => {
     if (points < 3) setPoints(points + 1);
   };
 
-  // Radiergummi
-  const eraseTile = (pokemon) => {
+  // 🧽 gezieltes Löschen
+  const eraseTile = (pokemon, index) => {
+    const activeCount = pokemon.pattern.filter(v => v).length;
+    if (activeCount <= 1) return;
     if (points < 1) return;
 
-    const newPattern = [...pokemon.pattern];
-    const index = newPattern.lastIndexOf(true);
-    if (index !== -1) newPattern[index] = false;
-
-    pokemon.pattern = newPattern;
-    pokemon.usedPoints += 1;
+    pokemon.pattern[index] = false;
 
     setPoints(points - 1);
     setTeam([...team]);
   };
 
-  // Pinsel
+  // 🖌️ Farbe ändern
   const changeColor = (pokemon) => {
     if (points < 2) return;
 
     pokemon.color = "#000000";
-    pokemon.usedPoints += 2;
 
     setPoints(points - 2);
     setTeam([...team]);
-  };
-
-  // Pattern Editor Toggle
-  const togglePattern = (i) => {
-    const newPattern = [...pattern];
-    newPattern[i] = !newPattern[i];
-    setPattern(newPattern);
   };
 
   return (
     <div style={{ padding: 20 }}>
       <h1>Pokemon Grid</h1>
 
-      <h2>Punkte: {points}</h2>
-      <button onClick={addPoint}>+ Punkt</button>
+      {/* Punkte + Tools */}
+      <h2>
+        Punkte: {points}
+        <button onClick={addPoint}>+1</button>
+        <span style={{ marginLeft: 10 }}>🧽 (1)</span>
+        <span style={{ marginLeft: 10 }}>🖌️ (2)</span>
+      </h2>
 
       {message && <p style={{ color: "red" }}>{message}</p>}
 
       <div style={{ display: "flex", gap: 40 }}>
-        
+
         {/* GRID */}
         <div>
           <h2>Grid</h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 80px)", gap: 5 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,80px)", gap: 5 }}>
             {grid.map((cell, i) => (
               <div
                 key={i}
-                title={cell ? `${cell.nickname}` : ""}
+                title={cell ? cell.nickname : ""}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={() => placeOnGrid(i)}
                 style={{
                   width: 80,
                   height: 80,
                   border: "1px solid black",
-                  background: cell ? cell.color : "white",
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center"
+                  background: cell ? cell.color : "white"
                 }}
               >
                 {cell && <img src={cell.sprite} width={40} />}
@@ -228,34 +220,46 @@ export default function App() {
         {/* TEAM */}
         <div>
           <h2>Team</h2>
+
           {team.map(p => (
-            <div key={p.id} style={{ marginBottom: 15 }}>
-              <div
-                draggable
-                onDragStart={() => setSelected(p)}
-              >
+            <div key={p.id} style={{ marginBottom: 15, display: "flex", gap: 10 }}>
+
+              <div draggable onDragStart={() => setSelected(p)}>
                 <img src={p.sprite} width={40} />
-                <span>{p.nickname}</span>
+                <div>{p.nickname}</div>
               </div>
 
-              {/* Pattern Preview */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 10px)" }}>
+              {/* Pattern rechts */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3,15px)" }}>
                 {p.pattern.map((val, i) => (
                   <div
                     key={i}
+                    onClick={() => eraseTile(p, i)}
                     style={{
-                      width: 10,
-                      height: 10,
-                      background: val ? p.color : "#eee"
+                      width: 15,
+                      height: 15,
+                      background: val ? p.color : "#eee",
+                      border: "1px solid black",
+                      cursor: "pointer"
                     }}
                   />
                 ))}
               </div>
 
-              <button onClick={() => removeFromTeam(p.id)}>Remove</button>
-              <button onClick={() => eraseTile(p)}>🧽</button>
-              <button onClick={() => changeColor(p)}>🖌️</button>
-              <button onClick={() => setShowEvolve(p)}>Evolve</button>
+              <div>
+                <button onClick={() => removeFromTeam(p.id)}>❌</button>
+                <button onClick={() => changeColor(p)}>🖌️</button>
+
+                {/* Evolution */}
+                {evolvingId === p.id ? (
+                  <input
+                    placeholder="Evolve..."
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                ) : (
+                  <button onClick={() => setEvolvingId(p.id)}>⬆️</button>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -285,11 +289,15 @@ export default function App() {
           ))}
 
           {/* Pattern Editor */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 40px)" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,40px)" }}>
             {pattern.map((val, i) => (
               <div
                 key={i}
-                onClick={() => togglePattern(i)}
+                onClick={() => {
+                  const newP = [...pattern];
+                  newP[i] = !newP[i];
+                  setPattern(newP);
+                }}
                 style={{
                   width: 40,
                   height: 40,
@@ -307,27 +315,6 @@ export default function App() {
           />
 
           <button onClick={catchPokemon}>Catch</button>
-        </div>
-      )}
-
-      {/* Evolution */}
-      {showEvolve && (
-        <div>
-          <h3>Entwickeln</h3>
-
-          {filtered.slice(0, 10).map(p => (
-            <div
-              key={p.name}
-              onClick={() => {
-                showEvolve.name = p.name;
-                showEvolve.usedPoints = 0;
-                setShowEvolve(null);
-                setTeam([...team]);
-              }}
-            >
-              {p.name}
-            </div>
-          ))}
         </div>
       )}
     </div>
