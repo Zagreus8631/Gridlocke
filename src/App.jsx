@@ -11,13 +11,12 @@ const typeColors = {
   normal: "#bdc3c7"
 };
 
-const addHover = (e) => e.target.style.textDecoration = "underline";
-const removeHover = (e) => e.target.style.textDecoration = "none";
-
 export default function App() {
   const [grid, setGrid] = useState(emptyGrid);
   const [team, setTeam] = useState([]);
   const [box, setBox] = useState([]);
+  const [graveyard, setGraveyard] = useState([]);
+
   const [pokemonList, setPokemonList] = useState([]);
 
   const [selected, setSelected] = useState(null);
@@ -31,13 +30,9 @@ export default function App() {
   const [requiredTiles, setRequiredTiles] = useState(1);
 
   const [nickname, setNickname] = useState("");
-
-  const [points, setPoints] = useState(0);
-  const [message, setMessage] = useState("");
-
   const [patternModal, setPatternModal] = useState(null);
 
-  const [eraseMode, setEraseMode] = useState(false);
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
     fetch("https://pokeapi.co/api/v2/pokemon?limit=200")
@@ -75,28 +70,28 @@ export default function App() {
     return r * 3 + c;
   };
 
-  const placeOnGrid = (index) => {
-    if (!selected) return;
-
-    const offsets = getOffsets(selected.pattern);
-    let newGrid = [...grid];
-
-    newGrid = newGrid.map(c => (c?.id === selected.id ? null : c));
+  const canPlace = (pokemon, index) => {
+    const offsets = getOffsets(pokemon.pattern);
 
     for (let o of offsets) {
       const pos = getGridIndex(index, o);
-      if (pos === null || newGrid[pos]) return setMessage("Platz belegt");
+      if (pos === null || grid[pos]) return false;
+    }
+    return true;
+  };
 
-      const neighbors = [pos - 1, pos + 1, pos - 3, pos + 3];
-      for (let n of neighbors) {
-        if (n >= 0 && n < 9 && newGrid[n]) {
-          if (newGrid[n].color === selected.color)
-            return setMessage("Gleicher Typ nebeneinander");
-        }
-      }
+  const placeOnGrid = (index) => {
+    if (!selected) return;
+
+    if (!canPlace(selected, index)) {
+      setMessage("Platz ungültig");
+      return;
     }
 
-    offsets.forEach(o => {
+    let newGrid = [...grid];
+    newGrid = newGrid.map(c => (c?.id === selected.id ? null : c));
+
+    getOffsets(selected.pattern).forEach(o => {
       const pos = getGridIndex(index, o);
       newGrid[pos] = selected;
     });
@@ -125,8 +120,10 @@ export default function App() {
 
   const confirmPattern = () => {
     const count = pattern.filter(v => v).length;
-    if (count !== requiredTiles)
-      return setMessage(`Du brauchst genau ${requiredTiles} Felder`);
+    if (count !== requiredTiles) {
+      setMessage(`Genau ${requiredTiles} Felder setzen!`);
+      return;
+    }
 
     const p = patternModal.data;
 
@@ -153,34 +150,47 @@ export default function App() {
     <div style={{ padding: 20 }}>
       <h1>Pokemon Grid</h1>
 
-      <h2>
-        Punkte: {points}
-        <button onClick={() => setPoints(Math.min(3, points + 1))}>+1</button>
-      </h2>
-
       {message && <p style={{ color: "red" }}>{message}</p>}
 
       <div style={{ display: "flex", gap: 40 }}>
+
         {/* GRID */}
         <div>
           <h2>Grid</h2>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3,80px)" }}>
-            {grid.map((cell, i) => (
-              <div
-                key={i}
-                onClick={() => removeFromGrid(i)}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={() => placeOnGrid(i)}
-                style={{
-                  width: 80,
-                  height: 80,
-                  border: "1px solid black",
-                  background: cell ? cell.color : "white"
-                }}
-              >
-                {cell && <img src={cell.sprite} width={40} />}
-              </div>
-            ))}
+            {grid.map((cell, i) => {
+              let preview = null;
+
+              if (hoverIndex === i && selected) {
+                preview = getOffsets(selected.pattern)
+                  .map(o => getGridIndex(i, o))
+                  .includes(i);
+              }
+
+              return (
+                <div
+                  key={i}
+                  onClick={() => removeFromGrid(i)}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setHoverIndex(i);
+                  }}
+                  onDrop={() => placeOnGrid(i)}
+                  style={{
+                    width: 80,
+                    height: 80,
+                    border: "1px solid black",
+                    background: cell
+                      ? cell.color
+                      : preview
+                      ? "rgba(0,0,0,0.2)"
+                      : "white"
+                  }}
+                >
+                  {cell && <img src={cell.sprite} width={40} />}
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -188,9 +198,42 @@ export default function App() {
         <div>
           <h2>Team</h2>
           {team.map(p => (
-            <div key={p.id} draggable onDragStart={() => setSelected(p)}>
-              <img src={p.sprite} width={40} />
-              <div>{p.nickname}</div>
+            <div key={p.id} style={{ display: "flex", gap: 10 }}>
+              <div draggable onDragStart={() => setSelected(p)}>
+                <img src={p.sprite} width={40} />
+                <div>{p.nickname}</div>
+              </div>
+
+              {/* Muster */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3,15px)" }}>
+                {p.pattern.map((val, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      width: 15,
+                      height: 15,
+                      background: val ? p.color : "#eee",
+                      border: "1px solid black"
+                    }}
+                  />
+                ))}
+              </div>
+
+              <button onClick={() => {
+                setBox([...box, p]);
+                setTeam(team.filter(t => t.id !== p.id));
+                setGrid(grid.map(c => (c?.id === p.id ? null : c)));
+              }}>
+                → Box
+              </button>
+
+              <button onClick={() => {
+                setGraveyard([...graveyard, p]);
+                setTeam(team.filter(t => t.id !== p.id));
+                setGrid(grid.map(c => (c?.id === p.id ? null : c)));
+              }}>
+                💀
+              </button>
             </div>
           ))}
         </div>
@@ -199,23 +242,22 @@ export default function App() {
       {/* BOX */}
       <h2>Box</h2>
       {box.map(p => (
-        <div key={p.id} style={{ display: "flex", gap: 10 }}>
-          <img src={p.sprite} width={40} />
-          <div>{p.nickname}</div>
-
-          <span
-            style={{ cursor: "pointer" }}
-            onClick={() => {
-              if (team.find(t => t.id === p.id)) return;
-              if (team.length >= 6) return;
-
-              setTeam([...team, p]);
-              setBox(box.filter(b => b.id !== p.id));
-            }}
-          >
-            → To Team
-          </span>
+        <div key={p.id}>
+          {p.nickname}
+          <button onClick={() => {
+            if (team.length >= 6) return;
+            setTeam([...team, p]);
+            setBox(box.filter(b => b.id !== p.id));
+          }}>
+            → Team
+          </button>
         </div>
+      ))}
+
+      {/* GRAVEYARD */}
+      <h2>Graveyard</h2>
+      {graveyard.map(p => (
+        <div key={p.id}>{p.nickname}</div>
       ))}
 
       {/* CATCH */}
@@ -229,40 +271,27 @@ export default function App() {
 
           {filtered.slice(0, 10).map(p => {
             const id = p.url.split("/").filter(Boolean).pop();
-            const sprite = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-viii/icons/${id}.png`;
+            const icon = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-viii/icons/${id}.png`;
 
             return (
-              <div
-                key={p.name}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  padding: "5px 0"
-                }}
-              >
+              <div key={p.name} style={{ display: "flex", gap: 10 }}>
                 <span
                   style={{
-                    cursor: "pointer",
                     fontWeight: selectedPokemon?.name === p.name ? "bold" : "normal",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8
+                    cursor: "pointer"
                   }}
                   onClick={() => {
                     setSelectedPokemon(p);
                     setNickname("");
                   }}
                 >
-                  <img src={sprite} width={40} />
-                  {p.name}
+                  <img src={icon} width={30} /> {p.name}
                 </span>
 
                 {selectedPokemon?.name === p.name && (
                   <>
                     <input
-                      style={{ width: "150px" }}
-                      placeholder="Nickname..."
+                      placeholder="Nickname"
                       value={nickname}
                       onChange={(e) => setNickname(e.target.value)}
                     />
@@ -285,13 +314,16 @@ export default function App() {
           padding: 20,
           border: "2px solid black"
         }}>
-          <h3>Muster wählen ({requiredTiles})</h3>
+          <h3>Muster ({requiredTiles})</h3>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3,40px)" }}>
             {pattern.map((val, i) => (
               <div
                 key={i}
                 onClick={() => {
+                  const count = pattern.filter(v => v).length;
+                  if (!val && count >= requiredTiles) return;
+
                   const newP = [...pattern];
                   newP[i] = !newP[i];
                   setPattern(newP);
