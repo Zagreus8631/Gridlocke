@@ -31,7 +31,7 @@ export default function App() {
   const [selectedPokemon, setSelectedPokemon] = useState(null);
   const [nickname, setNickname] = useState("");
 
-  const [pattern: [...pattern], setPattern] = useState(Array(9).fill(false));
+  const [pattern, setPattern] = useState(Array(9).fill(false));
   const [requiredTiles, setRequiredTiles] = useState(1);
   const [patternModal, setPatternModal] = useState(null);
 
@@ -277,7 +277,8 @@ setSpeciesPatterns(prev => ({
         style={{ border: "1px solid #ccc", padding: 5 }}
       >
         <img src={p.sprite} width={40} />
-        <div>{p.nickname}</div>
+        <div><img src={p.sprite} width={40} />
+{p.nickname}</div>
 
         {/* Muster Vorschau */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3,10px)" }}>
@@ -543,16 +544,18 @@ const newRequired = getEVTiles(data.stats);
 const savedPattern = speciesPatterns[data.name];
 
 if (savedPattern) {
-  // ✅ Muster existiert schon → direkt entwickeln
   const newPokemon = {
     id: Date.now(),
     name: data.name,
-    nickname: evoModal.nickname,
+    nickname: evoModal.nickname || evoModal.name,
     sprite: data.sprites.front_default,
-    pattern: savedpattern: [...pattern],
+    pattern: [...savedPattern],
     color: typeColors[data.types[0].type.name] || "gray",
     eraserUsed: evoModal.eraserUsed || 0
   };
+
+  setTeam(prev => [...prev, newPokemon]);
+}
 
   setTeam(prev => [...prev, newPokemon]);
   setPatternModal(null);
@@ -563,7 +566,7 @@ if (savedPattern) {
 
   setPatternModal({
     data,
-    nickname: evoModal.nickname,
+    nickname: evoModal.nickname || evoModal.name,
     evolvingId: evoModal.id,
     eraserUsed: evoModal.eraserUsed || 0
   });
