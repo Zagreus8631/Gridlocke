@@ -262,8 +262,8 @@ const evoFiltered = pokemonList.filter(p =>
 
         {/* 🔥 NEU: Entwicklung */}
         <button onClick={() => {
+  console.log("EVOLVE CLICK");
   setEvoModal(p);
-  setEvoSearch("");
 }}>
   ⬆️ Entwickeln
 </button>
