@@ -114,6 +114,14 @@ const evoFiltered = pokemonList.filter(p =>
 
       setPoints(p => p - 1);
 
+setTeam(prev =>
+  prev.map(t =>
+    t.id === cell.id
+      ? { ...t, eraserUsed: (t.eraserUsed || 0) + 1 }
+      : t
+  )
+);
+
       let newGrid = [...grid];
       newGrid[index] = null;
       setGrid(newGrid);
@@ -151,15 +159,21 @@ const evoFiltered = pokemonList.filter(p =>
     const p = patternModal.data;
 
     const newPokemon = {
-      id: Date.now(),
+  id: patternModal.evolvingId || Date.now(),
+eraserUsed: patternModal.eraserUsed || 0
       name: p.name,
       nickname,
       sprite: p.sprites.front_default,
       pattern,
-      color: typeColors[p.types[0].type.name] || "gray"
+      color: typeColors[p.types[0].type.name] || "gray",
+eraserUsed: 0
     };
 
-    setBox([...box, newPokemon]);
+    if (patternModal.evolvingId) {
+  setTeam(prev => [...prev, newPokemon]);
+} else {
+  setBox([...box, newPokemon]);
+}
 
     setPattern(Array(9).fill(false));
     setPatternModal(null);
@@ -422,7 +436,8 @@ setEvoSearch("");
           nickname: patternModal.nickname,
           sprite: p.sprites.front_default,
           pattern,
-          color: typeColors[p.types[0].type.name] || "gray"
+          color: typeColors[p.types[0].type.name] || "gray",
+eraserUsed: patternModal.eraserUsed || 0
         };
 
         setBox([...box, newPokemon]);
@@ -479,12 +494,32 @@ setEvoSearch("");
                   const res = await fetch(p.url);
                   const data = await res.json();
 
-                  const updated = {
-                    ...evoModal,
-                    name: data.name,
-                    sprite: data.sprites.front_default,
-                    color: typeColors[data.types[0].type.name] || "gray"
-                  };
+                  // 1. aus Grid entfernen
+setGrid(prev => prev.map(c => c?.id === evoModal.id ? null : c));
+
+// 2. neue requiredTiles berechnen
+const newRequired = getEVTiles(data.stats);
+
+// 3. Punkte zurückgeben (Radiergummi-Bonus)
+setPoints(p => p + (evoModal.eraserUsed || 0));
+
+// 4. Pattern neu setzen
+setPattern(Array(9).fill(false));
+setRequiredTiles(newRequired);
+
+// 5. Entwicklung zwischenspeichern
+setPatternModal({
+  data,
+  nickname: evoModal.nickname,
+  evolvingId: evoModal.id,
+  eraserUsed: evoModal.eraserUsed || 0
+});
+
+// 6. altes Pokemon aus Team entfernen
+setTeam(prev => prev.filter(t => t.id !== evoModal.id));
+
+// 7. Evo Modal schließen
+setEvoModal(null);
 
                   setTeam(prev =>
                     prev.map(t => t.id === evoModal.id ? updated : t)
