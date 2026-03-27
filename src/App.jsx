@@ -18,12 +18,9 @@ export default function App() {
 
   const [pokemonList, setPokemonList] = useState([]);
 
-  const [selected, setSelected] = useState(null);
   const [dragging, setDragging] = useState(null);
   const [hoverIndex, setHoverIndex] = useState(null);
 
-
-  const [brush, setBrush] = useState(false);
   const [eraser, setEraser] = useState(false);
 
   const [showCatch, setShowCatch] = useState(false);
@@ -36,10 +33,11 @@ export default function App() {
   const [patternModal, setPatternModal] = useState(null);
 
   const [message, setMessage] = useState("");
-const [evoModal, setEvoModal] = useState(null);
-const [evoSearch, setEvoSearch] = useState("");
 
-const [speciesPatterns, setSpeciesPatterns] = useState({});
+  const [evoModal, setEvoModal] = useState(null);
+  const [evoSearch, setEvoSearch] = useState("");
+
+  const [speciesPatterns, setSpeciesPatterns] = useState({});
 
   useEffect(() => {
     fetch("https://pokeapi.co/api/v2/pokemon?limit=200")
@@ -50,9 +48,10 @@ const [speciesPatterns, setSpeciesPatterns] = useState({});
   const filtered = pokemonList.filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase())
   );
-const evoFiltered = pokemonList.filter(p =>
-  p.name.toLowerCase().includes(evoSearch.toLowerCase())
-);
+
+  const evoFiltered = pokemonList.filter(p =>
+    p.name.toLowerCase().includes(evoSearch.toLowerCase())
+  );
 
   const getEVTiles = (stats) => {
     const ev = stats.reduce((sum, s) => sum + s.effort, 0);
@@ -89,29 +88,21 @@ const evoFiltered = pokemonList.filter(p =>
     const offsets = getOffsets(pokemon.pattern);
 
     for (let o of offsets) {
-  const pos = getGridIndex(index, o);
-  if (pos === null || newGrid[pos]) {
-    setMessage("Ungültige Position");
-    return;
-  }
+      const pos = getGridIndex(index, o);
+      if (pos === null || newGrid[pos]) return;
 
-  // 🔥 Farbprüfung (Nachbarn)
-  const neighbors = [
-    pos - 1, pos + 1,
-    pos - 3, pos + 3
-  ];
-
-  for (let n of neighbors) {
-    if (
-      n >= 0 && n < 9 &&
-      newGrid[n] &&
-      newGrid[n].color === pokemon.color
-    ) {
-      setMessage("Gleiche Farbe darf nicht angrenzen!");
-      return;
+      const neighbors = [pos - 1, pos + 1, pos - 3, pos + 3];
+      for (let n of neighbors) {
+        if (
+          n >= 0 && n < 9 &&
+          newGrid[n] &&
+          newGrid[n].color === pokemon.color
+        ) {
+          setMessage("Gleiche Farbe darf nicht angrenzen!");
+          return;
+        }
+      }
     }
-  }
-}
 
     offsets.forEach(o => {
       const pos = getGridIndex(index, o);
@@ -126,22 +117,16 @@ const evoFiltered = pokemonList.filter(p =>
     const cell = grid[index];
 
     if (eraser && cell) {
-      const pokemonInTeam = team.find(t => t.id === cell.id);
-
-if (!pokemonInTeam || (pokemonInTeam.eraserUsed || 0) <= 0) return;
-
-      const count = grid.filter(c => c?.id === cell.id).length;
-      if (count <= 1) return;
+      const pokemon = team.find(t => t.id === cell.id);
+      if (!pokemon || pokemon.eraserUsed <= 0) return;
 
       setTeam(prev =>
-  prev.map(t =>
-    t.id === cell.id
-      ? { ...t, eraserUsed: t.eraserUsed - 1 }
-      : t
-  )
-);
-
-
+        prev.map(t =>
+          t.id === cell.id
+            ? { ...t, eraserUsed: t.eraserUsed - 1 }
+            : t
+        )
+      );
 
       let newGrid = [...grid];
       newGrid[index] = null;
@@ -151,75 +136,81 @@ if (!pokemonInTeam || (pokemonInTeam.eraserUsed || 0) <= 0) return;
 
     if (cell) {
       setDragging(cell);
-      setSelected(cell);
     } else if (dragging) {
       placeOnGrid(index, dragging);
       setDragging(null);
     }
   };
 
-  const catchPokemon = async () => {
-  console.log("CLICKED");
+  const openPatternModal = (data, nickname, evolvingId = null, eraserUsed = 0) => {
+    const saved = speciesPatterns[data.name];
 
-  if (!selectedPokemon || !nickname) return;
+    if (saved) {
+      const newPokemon = {
+        id: evolvingId || Date.now(),
+        name: data.name,
+        nickname,
+        sprite: data.sprites.front_default,
+        pattern: saved,
+        color: typeColors[data.types[0].type.name] || "gray",
+        eraserUsed
+      };
 
-  const res = await fetch(selectedPokemon.url);
-  const data = await res.json();
+      if (evolvingId) {
+        setTeam(prev => [...prev, newPokemon]);
+      } else {
+        setBox(prev => [...prev, newPokemon]);
+      }
 
-  setRequiredTiles(getEVTiles(data.stats));
-  setPatternModal({ data, nickname });
-};
-
-  const confirmPattern = () => {
-    const count = pattern.filter(v => v).length;
-    if (count !== requiredTiles) {
-      setMessage(`Genau ${requiredTiles} Felder!`);
       return;
     }
 
+    setPattern(Array(9).fill(false));
+    setRequiredTiles(getEVTiles(data.stats));
+
+    setPatternModal({
+      data,
+      nickname,
+      evolvingId,
+      eraserUsed
+    });
+  };
+
+  const confirmPattern = () => {
+    const count = pattern.filter(v => v).length;
+    if (count !== requiredTiles) return;
+
     const p = patternModal.data;
 
-const newPokemon = {
-  id: patternModal.evolvingId || Date.now(),
-  name: p.name,
-  nickname,
-  sprite: p.sprites.front_default,
-  pattern,
-  color: typeColors[p.types[0].type.name] || "gray",
-  eraserUsed: patternModal.eraserUsed || 0
-};
-setSpeciesPatterns(prev => ({
-  ...prev,
-  [p.name]: [...pattern]
-}));
+    setSpeciesPatterns(prev => ({
+      ...prev,
+      [p.name]: [...pattern]
+    }));
+
+    const newPokemon = {
+      id: patternModal.evolvingId || Date.now(),
+      name: p.name,
+      nickname: patternModal.nickname,
+      sprite: p.sprites.front_default,
+      pattern: [...pattern],
+      color: typeColors[p.types[0].type.name] || "gray",
+      eraserUsed: patternModal.eraserUsed
+    };
 
     if (patternModal.evolvingId) {
-  setTeam(prev => [...prev, newPokemon]);
-} else {
-  setBox([...box, newPokemon]);
-}
+      setTeam(prev => [...prev, newPokemon]);
+    } else {
+      setBox(prev => [...prev, newPokemon]);
+    }
 
-    setPattern(Array(9).fill(false));
     setPatternModal(null);
-    setNickname("");
-    setSelectedPokemon(null);
   };
 
   return (
     <div style={{ padding: 20 }}>
       <h1>Pokemon Grid</h1>
 
-      <h2>
-        Punkte: {points}
-        <button onClick={() => setPoints(p => Math.min(3, p + 1))}>
-          +1
-        </button>
-      </h2>
-
-      <button onClick={() => setBrush(!brush)}>🖌️</button>
       <button onClick={() => setEraser(!eraser)}>🧽</button>
-
-      {message && <p style={{ color: "red" }}>{message}</p>}
 
       <div style={{ display: "flex", gap: 40 }}>
         {/* GRID */}
@@ -227,10 +218,9 @@ setSpeciesPatterns(prev => ({
           <h2>Grid</h2>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3,80px)" }}>
             {grid.map((cell, i) => {
-              let previewCells = [];
-
+              let preview = [];
               if (hoverIndex !== null && dragging) {
-                previewCells = getOffsets(dragging.pattern)
+                preview = getOffsets(dragging.pattern)
                   .map(o => getGridIndex(hoverIndex, o))
                   .filter(v => v !== null);
               }
@@ -244,18 +234,16 @@ setSpeciesPatterns(prev => ({
                     setHoverIndex(i);
                   }}
                   onDrop={() => {
-  placeOnGrid(i, dragging);
-  setDragging(null);
-}}
+                    placeOnGrid(i, dragging);
+                    setDragging(null);
+                  }}
                   style={{
                     width: 80,
                     height: 80,
                     border: "1px solid black",
-                    background: previewCells.includes(i)
+                    background: preview.includes(i)
                       ? "rgba(0,0,0,0.3)"
-                      : cell
-                      ? cell.color
-                      : "white"
+                      : cell ? cell.color : "white"
                   }}
                 >
                   {cell && <img src={cell.sprite} width={40} />}
@@ -267,335 +255,71 @@ setSpeciesPatterns(prev => ({
 
         {/* TEAM */}
         <div>
-  <h2>Team</h2>
-
-  <div style={{
-    display: "grid",
-    gridTemplateColumns: "repeat(2, 1fr)",
-    gap: 10
-  }}>
-    {team.map(p => (
-      <div key={p.id} draggable onDragStart={() => {
-  setDragging(p);
-  setSelected(p);
-}}
-        style={{ border: "1px solid #ccc", padding: 5 }}
-      >
-        <img src={p.sprite} width={40} />
-        <div>{p.nickname}</div>
-
-        {/* Muster Vorschau */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,10px)" }}>
-          {p.pattern.map((val, i) => (
-            <div
-              key={i}
-              style={{
-                width: 10,
-                height: 10,
-                background: val ? p.color : "#eee"
-              }}
-            />
-          ))}
-        </div>
-
-        {/* 🔥 NEU: Entwicklung */}
-        <button onClick={() => {
-  console.log("EVOLVE CLICK");
-  setEvoModal(p);
-setEvoSearch("");
-}}>
-  ⬆️ Entwickeln
-</button>
-
-        <button onClick={() => {
-          setBox([...box, p]);
-          setTeam(team.filter(t => t.id !== p.id));
-          setGrid(grid.map(c => (c?.id === p.id ? null : c)));
-        }}>
-          → Box
-        </button>
-
-        <button onClick={() => {
-          setGraveyard([...graveyard, p]);
-          setTeam(team.filter(t => t.id !== p.id));
-          setGrid(grid.map(c => (c?.id === p.id ? null : c)));
-        }}>
-          💀
-        </button>
-      </div>
-    ))}
-  </div>
-</div>
-      </div>
-
-      {/* BOX */}
-      <h2>Box</h2>
-      {box.map(p => (
-        <div key={p.id}>
-          <img src={p.sprite} width={40} />
-          {p.nickname}
-          <button onClick={() => {
-            if (team.length >= 6) return;
-            setTeam([...team, p]);
-            setBox(box.filter(b => b.id !== p.id));
+          <h2>Team</h2>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2, 1fr)",
+            gap: 10
           }}>
-            → Team
-          </button>
+            {team.map(p => (
+              <div key={p.id} draggable onDragStart={() => setDragging(p)}>
+                <img src={p.sprite} width={40} />
+                <div>{p.nickname}</div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3,10px)" }}>
+                  {p.pattern.map((v, i) => (
+                    <div key={i} style={{
+                      width: 10,
+                      height: 10,
+                      background: v ? p.color : "#eee"
+                    }} />
+                  ))}
+                </div>
+
+                <button onClick={() => {
+                  setEvoModal(p);
+                  setEvoSearch("");
+                }}>⬆️ Entwickeln</button>
+              </div>
+            ))}
+          </div>
         </div>
-      ))}
-
-      {/* GRAVEYARD */}
-      <h2>Graveyard</h2>
-{graveyard.map(p => (
-  <div key={p.id}>
-    {p.nickname}
-    <button onClick={() => {
-      setBox([...box, p]);
-      setGraveyard(graveyard.filter(g => g.id !== p.id));
-    }}>
-      → Box
-    </button>
-  </div>
-))}
-
-{/* CATCH */}
-<button onClick={() => setShowCatch(!showCatch)}>
-  Catch Pokemon
-</button>
-
-{showCatch && (
-  <div>
-    <input
-      value={search}
-      onChange={(e) => setSearch(e.target.value)}
-      placeholder="Pokemon suchen..."
-    />
-
-    {filtered.slice(0, 10).map(p => {
-      const id = p.url.split("/").filter(Boolean).pop();
-      const icon = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-viii/icons/${id}.png`;
-
-      return (
-        <div key={p.name}>
-          <span
-            style={{
-              fontWeight: selectedPokemon?.name === p.name ? "bold" : "normal",
-              cursor: "pointer"
-            }}
-            onClick={() => {
-              setSelectedPokemon(p);
-              setNickname("");
-            }}
-          >
-            <img src={icon} width={30} /> {p.name}
-          </span>
-
-          {selectedPokemon?.name === p.name && (
-            <>
-              <input
-                placeholder="Nickname"
-                value={nickname}
-                onChange={(e) => setNickname(e.target.value)}
-              />
-              <button onClick={catchPokemon}>Weiter</button>
-            </>
-          )}
-        </div>
-      );
-    })}
-  </div>
-)}
-      
-{/* PATTERN MODAL */}
-{patternModal && (
-  <div style={{
-    position: "fixed",
-    top: 0,
-    left: 0,
-    width: "100%",
-    height: "100%",
-    background: "rgba(0,0,0,0.5)",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center"
-  }}>
-    <div style={{
-      background: "white",
-      padding: 20,
-      borderRadius: 10
-    }}>
-      <h3>Muster festlegen ({requiredTiles} Felder)</h3>
-
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(3,40px)",
-        gap: 5
-      }}>
-        {pattern.map((val, i) => (
-          <div
-            key={i}
-            onClick={() => {
-              const count = pattern.filter(v => v).length;
-              if (!val && count >= requiredTiles) return;
-
-              const newPattern = [...pattern];
-              newPattern[i] = !newPattern[i];
-              setPattern(newPattern);
-            }}
-            style={{
-              width: 40,
-              height: 40,
-              border: "1px solid black",
-              background: val ? "black" : "white",
-              cursor: "pointer"
-            }}
-          />
-        ))}
-
       </div>
 
-      <button onClick={() => {
-        const count = pattern.filter(v => v).length;
+      {/* PATTERN MODAL */}
+      {patternModal && (
+        <div style={{
+          position: "fixed",
+          top: 0, left: 0, width: "100%", height: "100%",
+          background: "rgba(0,0,0,0.5)",
+          display: "flex", justifyContent: "center", alignItems: "center"
+        }}>
+          <div style={{ background: "white", padding: 20 }}>
+            <h3>Muster ({requiredTiles})</h3>
 
-        if (count !== requiredTiles) {
-          alert(`Du musst genau ${requiredTiles} Felder wählen!`);
-          return;
-        }
-
-        const p = patternModal.data;
-
-setSpeciesPatterns(prev => ({
-  ...prev,
-  [p.name]: [...pattern]
-}));
-
-        const newPokemon = {
-          id: Date.now(),
-          name: p.name,
-          nickname: patternModal.nickname,
-          sprite: p.sprites.front_default,
-          pattern,
-          color: typeColors[p.types[0].type.name] || "gray",
-eraserUsed: patternModal.eraserUsed || 0
-        };
-
-        if (patternModal.evolvingId) {
-  setTeam(prev => [...prev, newPokemon]);
-} else {
-  setBox([...box, newPokemon]);
-}
-
-        // Reset
-        setPattern(Array(9).fill(false));
-        setPatternModal(null);
-        setSelectedPokemon(null);
-        setNickname("");
-      }}>
-        Bestätigen
-      </button>
-    </div>
-  </div>
-)}
-{evoModal && (
-  <div style={{
-    position: "fixed",
-    top: 0,
-    left: 0,
-    width: "100%",
-    height: "100%",
-    background: "rgba(0,0,0,0.5)",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center"
-  }}>
-    <div style={{
-      background: "white",
-      padding: 20,
-      borderRadius: 10,
-      width: 300
-    }}>
-      <h3>Entwicklung wählen</h3>
-
-      <input
-        placeholder="Pokemon suchen..."
-        value={evoSearch}
-        onChange={(e) => setEvoSearch(e.target.value)}
-        style={{ width: "100%", marginBottom: 10 }}
-      />
-
-      <div style={{ maxHeight: 200, overflowY: "auto" }}>
-        {evoFiltered.slice(0, 10).map(p => {
-          const id = p.url.split("/").filter(Boolean).pop();
-          const icon = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-viii/icons/${id}.png`;
-
-          return (
-            <div
-              key={p.name}
-              style={{ cursor: "pointer", marginBottom: 5 }}
-              onClick={async () => {
-                try {
-                  const res = await fetch(p.url);
-                  const data = await res.json();
-
-                  // 1. aus Grid entfernen
-setGrid(prev => prev.map(c => c?.id === evoModal.id ? null : c));
-
-// 2. neue requiredTiles berechnen
-const newRequired = getEVTiles(data.stats);
-
-
-
-const savedPattern = speciesPatterns[data.name];
-
-if (savedPattern) {
-  // ✅ Muster existiert schon → direkt entwickeln
-  const newPokemon = {
-    id: evoModal.id,
-    name: data.name,
-    nickname: evoModal.nickname,
-    sprite: data.sprites.front_default,
-    pattern: savedPattern,
-    color: typeColors[data.types[0].type.name] || "gray",
-    eraserUsed: evoModal.eraserUsed || 0
-  };
-
-  setTeam(prev => [...prev, newPokemon]);
-  setPatternModal(null);
-} else {
-  // ❗ neues Muster nötig
-  setPattern(Array(9).fill(false));
-  setRequiredTiles(newRequired);
-
-  setPatternModal({
-    data,
-    nickname: evoModal.nickname,
-    evolvingId: evoModal.id,
-    eraserUsed: evoModal.eraserUsed || 0
-  });
-}
-// 6. altes Pokemon aus Team entfernen
-setTeam(prev => prev.filter(t => t.id !== evoModal.id));
-
-// 7. Evo Modal schließen
-setEvoModal(null);
-
-                  
-                } catch {
-                  alert("Fehler bei Entwicklung");
-                }
-              }}
-            >
-              <img src={icon} width={30} /> {p.name}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,40px)" }}>
+              {pattern.map((val, i) => (
+                <div key={i}
+                  onClick={() => {
+                    const count = pattern.filter(v => v).length;
+                    if (!val && count >= requiredTiles) return;
+                    const copy = [...pattern];
+                    copy[i] = !copy[i];
+                    setPattern(copy);
+                  }}
+                  style={{
+                    width: 40, height: 40,
+                    background: val ? "black" : "white",
+                    border: "1px solid black"
+                  }}
+                />
+              ))}
             </div>
-          );
-        })}
-      </div>
 
-      <button onClick={() => setEvoModal(null)}>Abbrechen</button>
-    </div>
-  </div>
-)}
-
+            <button onClick={confirmPattern}>Bestätigen</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
