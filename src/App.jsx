@@ -543,8 +543,6 @@ const newRequired = getEVTiles(data.stats);
 
 const savedPattern = speciesPatterns[data.name];
 
-const savedPattern = speciesPatterns[data.name];
-
 if (savedPattern) {
   const newPokemon = {
     id: Date.now(),
@@ -570,17 +568,8 @@ if (savedPattern) {
     eraserUsed: evoModal.eraserUsed || 0
   });
 }
-  // ❗ neues Muster nötig
-  setPattern(Array(9).fill(false));
-  setRequiredTiles(newRequired);
 
-  setPatternModal({
-    data,
-    nickname: evoModal.nickname || evoModal.name,
-    evolvingId: evoModal.id,
-    eraserUsed: evoModal.eraserUsed || 0
-  });
-}
+
 // 6. altes Pokemon aus Team entfernen
 setTeam(prev => prev.filter(t => t.id !== evoModal.id));
 
