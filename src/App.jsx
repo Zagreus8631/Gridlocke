@@ -28,7 +28,8 @@ export default function App() {
   const [selectedPokemon, setSelectedPokemon] = useState(null);
 
   const [globalDB, setGlobalDB] = useState({});
-  const [pattern, setPattern] = useState("0");
+  const [patternSize, setPatternSize] = useState(1);
+  const [nickname, setNickname] = useState("");
 
   const [points, setPoints] = useState(0);
 
@@ -43,7 +44,15 @@ export default function App() {
     p.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  // FIXED GRID POSITIONING
+  // Pattern automatisch erzeugen (einfach nebeneinander)
+  const generatePattern = (size) => {
+    let arr = [];
+    for (let i = 0; i < size; i++) {
+      arr.push(i);
+    }
+    return arr;
+  };
+
   const getPosition = (start, offset) => {
     const row = Math.floor(start / 3);
     const col = start % 3;
@@ -98,7 +107,7 @@ export default function App() {
   };
 
   const catchPokemon = async () => {
-    if (!selectedPokemon) return;
+    if (!selectedPokemon || !nickname) return;
 
     const res = await fetch(selectedPokemon.url);
     const data = await res.json();
@@ -107,8 +116,7 @@ export default function App() {
 
     if (!base) {
       base = {
-        color: typeColors[data.types[0].type.name] || "gray",
-        pattern: pattern.split(",").map(n => parseInt(n))
+        color: typeColors[data.types[0].type.name] || "gray"
       };
 
       setGlobalDB(prev => ({
@@ -120,15 +128,18 @@ export default function App() {
     const newPokemon = {
       id: Date.now() + Math.random(),
       name: data.name,
-      nickname: data.name,
+      nickname: nickname,
       sprite: data.sprites.front_default,
-      ...base
+      color: base.color,
+      pattern: generatePattern(patternSize)
     };
 
     setBox(prev => [...prev, newPokemon]);
 
     setSelectedPokemon(null);
     setSearch("");
+    setNickname("");
+    setPatternSize(1);
   };
 
   const moveToTeam = (p) => {
@@ -145,7 +156,8 @@ export default function App() {
     <div style={{ padding: 20 }}>
       <h1>Pokemon Grid</h1>
 
-      <p>Punkte: {points}</p>
+      {/* Punkte */}
+      <h2>Punkte: {points}</h2>
       <button onClick={addPoint}>+ Punkt</button>
 
       <div style={{ display: "flex", gap: 40 }}>
@@ -163,6 +175,9 @@ export default function App() {
             {grid.map((cell, i) => (
               <div
                 key={i}
+                title={
+                  cell ? `${cell.nickname} (${cell.name})` : ""
+                }
                 onClick={() => cell && removePokemon(cell.id)}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={() => placeOnGrid(i)}
@@ -182,7 +197,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* TEAM RIGHT SIDE */}
+        {/* TEAM */}
         <div>
           <h2>Team</h2>
           {team.map(p => (
@@ -193,18 +208,7 @@ export default function App() {
               style={{ marginBottom: 10 }}
             >
               <img src={p.sprite} width={40} />
-
-              <input
-                value={p.nickname}
-                onChange={(e) => {
-                  const newTeam = team.map(x =>
-                    x.id === p.id
-                      ? { ...x, nickname: e.target.value }
-                      : x
-                  );
-                  setTeam(newTeam);
-                }}
-              />
+              <span>{p.nickname}</span>
             </div>
           ))}
         </div>
@@ -215,7 +219,7 @@ export default function App() {
       {box.map(p => (
         <div key={p.id}>
           <img src={p.sprite} width={40} />
-          <span>{p.name}</span>
+          <span>{p.nickname}</span>
           <button onClick={() => moveToTeam(p)}>To Team</button>
         </div>
       ))}
@@ -242,11 +246,21 @@ export default function App() {
           {selectedPokemon && (
             <>
               <p>{selectedPokemon.name}</p>
+
               <input
-                placeholder="Pattern (z.B. 0,1,3)"
-                value={pattern}
-                onChange={(e) => setPattern(e.target.value)}
+                placeholder="Nickname"
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value)}
               />
+
+              <input
+                type="number"
+                min="1"
+                max="9"
+                value={patternSize}
+                onChange={(e) => setPatternSize(Number(e.target.value))}
+              />
+              <p>Größe des Musters</p>
             </>
           )}
 
