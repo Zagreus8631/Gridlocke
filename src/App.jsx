@@ -125,14 +125,16 @@ export default function App() {
   };
 
   const catchPokemon = async () => {
-    if (!selectedPokemon || !nickname) return;
+  console.log("CLICKED");
 
-    const res = await fetch(selectedPokemon.url);
-    const data = await res.json();
+  if (!selectedPokemon || !nickname) return;
 
-    setRequiredTiles(getEVTiles(data.stats));
-    setPatternModal({ data, nickname });
-  };
+  const res = await fetch(selectedPokemon.url);
+  const data = await res.json();
+
+  setRequiredTiles(getEVTiles(data.stats));
+  setPatternModal({ data, nickname });
+};
 
   const confirmPattern = () => {
     const count = pattern.filter(v => v).length;
