@@ -39,6 +39,8 @@ export default function App() {
 const [evoModal, setEvoModal] = useState(null);
 const [evoSearch, setEvoSearch] = useState("");
 
+const [speciesPatterns, setSpeciesPatterns] = useState({});
+
   useEffect(() => {
     fetch("https://pokeapi.co/api/v2/pokemon?limit=200")
       .then(res => res.json())
@@ -87,12 +89,29 @@ const evoFiltered = pokemonList.filter(p =>
     const offsets = getOffsets(pokemon.pattern);
 
     for (let o of offsets) {
-      const pos = getGridIndex(index, o);
-      if (pos === null || newGrid[pos]) {
-        setMessage("Ungültige Position");
-        return;
-      }
+  const pos = getGridIndex(index, o);
+  if (pos === null || newGrid[pos]) {
+    setMessage("Ungültige Position");
+    return;
+  }
+
+  // 🔥 Farbprüfung (Nachbarn)
+  const neighbors = [
+    pos - 1, pos + 1,
+    pos - 3, pos + 3
+  ];
+
+  for (let n of neighbors) {
+    if (
+      n >= 0 && n < 9 &&
+      newGrid[n] &&
+      newGrid[n].color === pokemon.color
+    ) {
+      setMessage("Gleiche Farbe darf nicht angrenzen!");
+      return;
     }
+  }
+}
 
     offsets.forEach(o => {
       const pos = getGridIndex(index, o);
@@ -167,6 +186,10 @@ const newPokemon = {
   color: typeColors[p.types[0].type.name] || "gray",
   eraserUsed: patternModal.eraserUsed || 0
 };
+setSpeciesPatterns(prev => ({
+  ...prev,
+  [p.name]: pattern
+}));
 
     if (patternModal.evolvingId) {
   setTeam(prev => [...prev, newPokemon]);
@@ -321,6 +344,18 @@ setEvoSearch("");
 
       {/* GRAVEYARD */}
       <h2>Graveyard</h2>
+{graveyard.map(p => (
+  <div key={p.id}>
+    {p.nickname}
+    <button onClick={() => {
+      setBox([...box, p]);
+      setGraveyard(graveyard.filter(g => g.id !== p.id));
+    }}>
+      → Box
+    </button>
+  </div>
+))}
+
 {/* CATCH */}
 <button onClick={() => setShowCatch(!showCatch)}>
   Catch Pokemon
@@ -368,9 +403,7 @@ setEvoSearch("");
     })}
   </div>
 )}
-      {graveyard.map(p => (
-        <div key={p.id}>{p.nickname}</div>
-      ))}
+      
 {/* PATTERN MODAL */}
 {patternModal && (
   <div style={{
@@ -506,18 +539,34 @@ const newRequired = getEVTiles(data.stats);
 // 3. Punkte zurückgeben (Radiergummi-Bonus)
 setPoints(p => p + (evoModal.eraserUsed || 0));
 
-// 4. Pattern neu setzen
-setPattern(Array(9).fill(false));
-setRequiredTiles(newRequired);
+const savedPattern = speciesPatterns[data.name];
 
-// 5. Entwicklung zwischenspeichern
-setPatternModal({
-  data,
-  nickname: evoModal.nickname,
-  evolvingId: evoModal.id,
-  eraserUsed: evoModal.eraserUsed || 0
-});
+if (savedPattern) {
+  // ✅ Muster existiert schon → direkt entwickeln
+  const newPokemon = {
+    id: evoModal.id,
+    name: data.name,
+    nickname: evoModal.nickname,
+    sprite: data.sprites.front_default,
+    pattern: savedPattern,
+    color: typeColors[data.types[0].type.name] || "gray",
+    eraserUsed: evoModal.eraserUsed || 0
+  };
 
+  setTeam(prev => [...prev, newPokemon]);
+  setPatternModal(null);
+} else {
+  // ❗ neues Muster nötig
+  setPattern(Array(9).fill(false));
+  setRequiredTiles(newRequired);
+
+  setPatternModal({
+    data,
+    nickname: evoModal.nickname,
+    evolvingId: evoModal.id,
+    eraserUsed: evoModal.eraserUsed || 0
+  });
+}
 // 6. altes Pokemon aus Team entfernen
 setTeam(prev => prev.filter(t => t.id !== evoModal.id));
 
