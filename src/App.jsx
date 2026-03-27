@@ -21,7 +21,9 @@ const [points, setPoints] = useState(3);
   const [selected, setSelected] = useState(null);
   const [dragging, setDragging] = useState(null);
   const [hoverIndex, setHoverIndex] = useState(null);
-
+const addPoint = () => {
+  setPoints(prev => Math.min(3, prev + 1));
+};
 
   const [brush, setBrush] = useState(false);
   const [eraser, setEraser] = useState(false);
@@ -236,7 +238,16 @@ if (patternModal.evolvingId) {
   return (
     <div style={{ padding: 20 }}>
       <h1>Pokemon Grid</h1>
-<div>⭐ Punkte: {points}</div>
+<div>
+  ⭐ Punkte: {points}
+  <button 
+  onClick={addPoint} 
+  disabled={points >= 3}
+  style={{ marginLeft: 10 }}
+>
+  ➕ Punkt
+</button>
+</div>
 
     
 
