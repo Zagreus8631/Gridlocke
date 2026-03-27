@@ -123,62 +123,67 @@ const evoFiltered = pokemonList.filter(p =>
   };
 
   const handleGridClick = (index) => {
-    const cell = grid[index];
+  const cell = grid[index];
 
-if (brush && cell) {
-  const pokemonInTeam = team.find(t => t.id === cell.id) || { eraserDebt: 0 };
-  if (!pokemonInTeam || points <= 0) return;
+  // 🖌️ BRUSH
+  if (brush && cell) {
+    const pokemonInTeam = team.find(t => t.id === cell.id);
 
-if (pokemonInTeam?.eraserDebt > 0) {
-  setMessage("Du musst erst Radierer verwenden!");
-  return;
-}
+    if (!pokemonInTeam || points <= 0) return;
 
-  setPoints(prev => prev - 1);
-
-  setTeam(prev =>
-    prev.map(t =>
-      t.id === cell.id
-        ? { ...t, color: "#000000" } // kannst du später ändern
-        : t
-    )
-  );
-
-  return;
-    if (eraser && cell) {
-      const pokemonInTeam = team.find(t => t.id === cell.id) || { eraserDebt: 0 };
-
-if (!pokemonInTeam || points <= 0) return;
-
-      const count = grid.filter(c => c?.id === cell.id).length;
-      if (count <= 1) return;
-
-     setPoints(prev => prev - 1);
-
-setTeam(prev =>
-  prev.map(t =>
-    t.id === cell.id
-      ? { ...t, eraserDebt: Math.max(0, (t.eraserDebt || 0) - 1) }
-      : t
-  )
-);
-
-
-
-      let newGrid = [...grid];
-      newGrid[index] = null;
-      setGrid(newGrid);
+    if (pokemonInTeam.eraserDebt > 0) {
+      setMessage("Du musst erst Radierer verwenden!");
       return;
     }
 
-    if (cell) {
-      setDragging(cell);
-      setSelected(cell);
-    } else if (dragging) {
-      placeOnGrid(index, dragging);
-      setDragging(null);
-    }
-  };
+    setPoints(prev => prev - 1);
+
+    setTeam(prev =>
+      prev.map(t =>
+        t.id === cell.id
+          ? { ...t, color: "#000000" }
+          : t
+      )
+    );
+
+    return;
+  }
+
+  // 🧽 ERASER
+  if (eraser && cell) {
+    const pokemonInTeam = team.find(t => t.id === cell.id);
+
+    if (!pokemonInTeam || points <= 0) return;
+
+    const count = grid.filter(c => c?.id === cell.id).length;
+    if (count <= 1) return;
+
+    setPoints(prev => prev - 1);
+
+    setTeam(prev =>
+      prev.map(t =>
+        t.id === cell.id
+          ? { ...t, eraserDebt: Math.max(0, (t.eraserDebt || 0) - 1) }
+          : t
+      )
+    );
+
+    let newGrid = [...grid];
+    newGrid[index] = null;
+    setGrid(newGrid);
+
+    return;
+  }
+
+  // 📦 NORMAL CLICK
+  if (cell) {
+    setDragging(cell);
+    setSelected(cell);
+  } else if (dragging) {
+    placeOnGrid(index, dragging);
+    setDragging(null);
+  }
+};
 
   const catchPokemon = async () => {
   console.log("CLICKED");
