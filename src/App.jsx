@@ -222,14 +222,6 @@ export default function App() {
 
         {/* TEAM */}
         <div>
-          <h2>Team</h2>
-
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(2, 1fr)",
-            gap: 10
-          }}>
-            <div>
   <h2>Team</h2>
 
   <div style={{
