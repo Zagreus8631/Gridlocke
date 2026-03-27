@@ -34,7 +34,7 @@ export default function App() {
     p.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  // ===== PATTERN LOGIK =====
+  // ===== PATTERN =====
   const getOffsets = (pattern) => {
     const active = pattern
       .map((v, i) => (v ? i : null))
@@ -66,7 +66,7 @@ export default function App() {
 
     let newGrid = [...grid];
 
-    // Entferne alte Position
+    // alte Position entfernen
     newGrid = newGrid.map(c => (c?.id === pokemon.id ? null : c));
 
     const offsets = getOffsets(pokemon.pattern);
@@ -91,9 +91,7 @@ export default function App() {
     const res = await fetch(selectedPokemon.url);
     const data = await res.json();
 
-    const tiles = (data.base_experience % 3) + 1;
-    setRequiredTiles(tiles);
-
+    // WICHTIG: keine automatische Überschreibung deiner Muster!
     setPatternModal({
       data,
       nickname
@@ -144,11 +142,45 @@ export default function App() {
                   border: "1px solid black",
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "center"
+                  justifyContent: "center",
+                  position: "relative",
+                  background:
+                    dragging &&
+                    getOffsets(dragging.pattern).some(o => {
+                      const pos = getGridIndex(i, o);
+                      return pos === i;
+                    })
+                      ? "rgba(0,0,0,0.1)"
+                      : "white"
                 }}
               >
+                {/* GHOST */}
+                {dragging &&
+                  getOffsets(dragging.pattern).map((o, idx) => {
+                    const pos = getGridIndex(i, o);
+                    if (pos !== i) return null;
+
+                    return (
+                      <div
+                        key={idx}
+                        style={{
+                          position: "absolute",
+                          width: 30,
+                          height: 30,
+                          background: "rgba(0,0,0,0.2)"
+                        }}
+                      />
+                    );
+                  })}
+
+                {/* CONTENT */}
                 {cell && (
-                  <div style={{ textAlign: "center" }}>
+                  <div style={{
+                    textAlign: "center",
+                    background: cell.color || "lightgray",
+                    borderRadius: 6,
+                    padding: 2
+                  }}>
                     <img src={cell.sprite} width={30} />
                     <div style={{ fontSize: 8 }}>{cell.nickname}</div>
                   </div>
@@ -172,14 +204,12 @@ export default function App() {
                 <img src={p.sprite} width={40} />
                 <div>{p.nickname}</div>
 
-                {/* MUSTER */}
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(3,10px)",
-                    gap: 2
-                  }}
-                >
+                {/* Muster */}
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(3,10px)",
+                  gap: 2
+                }}>
                   {p.pattern.map((v, i) => (
                     <div
                       key={i}
@@ -303,24 +333,15 @@ export default function App() {
           alignItems: "center"
         }}>
           <div style={{ background: "white", padding: 20 }}>
-            <h3>
-              Muster für {patternModal.data.name} ({requiredTiles} Felder)
-            </h3>
+            <h3>Muster festlegen</h3>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3,40px)" }}>
               {pattern.map((v, i) => (
                 <div
                   key={i}
                   onClick={() => {
-                    let active = pattern.filter(Boolean).length;
                     let newPattern = [...pattern];
-
-                    if (newPattern[i]) newPattern[i] = false;
-                    else {
-                      if (active >= requiredTiles) return;
-                      newPattern[i] = true;
-                    }
-
+                    newPattern[i] = !newPattern[i];
                     setPattern(newPattern);
                   }}
                   style={{
@@ -341,7 +362,8 @@ export default function App() {
                 name: p.name,
                 nickname: patternModal.nickname,
                 sprite: p.sprites.front_default,
-                pattern
+                pattern,
+                color: "lightgray"
               };
 
               setBox([...box, newPokemon]);
@@ -352,10 +374,6 @@ export default function App() {
               setNickname("");
             }}>
               Bestätigen
-            </button>
-
-            <button onClick={() => setPatternModal(null)}>
-              Abbrechen
             </button>
           </div>
         </div>
