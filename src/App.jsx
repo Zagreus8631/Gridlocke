@@ -2,64 +2,121 @@ import { useState, useEffect } from "react";
 
 const emptyGrid = Array(9).fill(null);
 
+const typeColors = {
+  fire: "#e74c3c",
+  water: "#3498db",
+  grass: "#2ecc71",
+  electric: "#f1c40f",
+  psychic: "#ff69b4",
+  ice: "#5dade2",
+  dragon: "#6a7baf",
+  dark: "#2c3e50",
+  fairy: "#e397d1",
+  normal: "#bdc3c7"
+};
+
 export default function App() {
   const [grid, setGrid] = useState(emptyGrid);
   const [team, setTeam] = useState([]);
   const [box, setBox] = useState([]);
   const [pokemonList, setPokemonList] = useState([]);
+
   const [selected, setSelected] = useState(null);
 
-  // 🔥 Pokémon laden
+  const [showCatch, setShowCatch] = useState(false);
+  const [search, setSearch] = useState("");
+  const [selectedPokemon, setSelectedPokemon] = useState(null);
+
+  const [globalDB, setGlobalDB] = useState({});
+  const [pattern, setPattern] = useState("0");
+
+  // Load Pokémon list
   useEffect(() => {
-    fetch("https://pokeapi.co/api/v2/pokemon?limit=50")
+    fetch("https://pokeapi.co/api/v2/pokemon?limit=200")
       .then(res => res.json())
       .then(data => setPokemonList(data.results));
   }, []);
 
-  // 🧩 Platz prüfen
-  const canPlace = (pattern, startIndex) => {
+  const filtered = pokemonList.filter(p =>
+    p.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  // Rule check
+  const isValidPlacement = (pattern, startIndex, pokemon) => {
     return pattern.every(p => {
       const pos = startIndex + p;
-      return pos < 9 && !grid[pos];
+
+      if (pos >= 9) return false;
+      if (grid[pos]) return false;
+
+      const neighbors = [pos - 1, pos + 1, pos - 3, pos + 3];
+
+      return neighbors.every(n => {
+        if (n < 0 || n >= 9) return true;
+        if (!grid[n]) return true;
+        return grid[n].color !== pokemon.color;
+      });
     });
   };
 
-  // 🧩 Platzieren
   const placeOnGrid = (index) => {
     if (!selected) return;
-    if (!canPlace(selected.pattern, index)) return;
+
+    const pat = selected.pattern;
+
+    if (!isValidPlacement(pat, index, selected)) return;
 
     const newGrid = [...grid];
 
-    selected.pattern.forEach(p => {
+    pat.forEach(p => {
       const pos = index + p;
-      newGrid[pos] = selected.id;
+      newGrid[pos] = selected;
     });
 
     setGrid(newGrid);
   };
 
-  // ❌ Entfernen
-  const removePokemonFromGrid = (pokemonId) => {
+  const removePokemon = (pokemonId) => {
     const newGrid = grid.map(cell =>
-      cell === pokemonId ? null : cell
+      cell?.id === pokemonId ? null : cell
     );
     setGrid(newGrid);
   };
 
-  // Pokémon fangen (vereinfachte Version)
-  const catchPokemon = async (pokemon) => {
-    const res = await fetch(pokemon.url);
+  // Catch Pokémon
+  const catchPokemon = async () => {
+    if (!selectedPokemon) return;
+
+    const res = await fetch(selectedPokemon.url);
     const data = await res.json();
+
+    let base = globalDB[data.name];
+
+    if (!base) {
+      base = {
+        color: typeColors[data.types[0].type.name] || "gray",
+        pattern: pattern.split(",").map(n => parseInt(n))
+      };
+
+      setGlobalDB(prev => ({
+        ...prev,
+        [data.name]: base
+      }));
+    }
 
     const newPokemon = {
       id: Date.now(),
       name: data.name,
+      nickname: data.name,
       sprite: data.sprites.front_default,
-      pattern: [0, 1] // 🔥 TEST-MUSTER
+      ...base
     };
 
     setBox(prev => [...prev, newPokemon]);
+
+    setShowCatch(false);
+    setSearch("");
+    setSelectedPokemon(null);
   };
 
   const moveToTeam = (p) => {
@@ -73,48 +130,59 @@ export default function App() {
       <h1>Pokemon Grid</h1>
 
       {/* GRID */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(3, 80px)",
-        gap: 5
-      }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(3, 80px)",
+          gap: 5
+        }}
+      >
         {grid.map((cell, i) => (
           <div
             key={i}
-            onClick={() => {
-              if (cell) {
-                removePokemonFromGrid(cell);
-              } else {
-                placeOnGrid(i);
-              }
-            }}
+            onClick={() => cell && removePokemon(cell.id)}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={() => placeOnGrid(i)}
             style={{
               width: 80,
               height: 80,
               border: "1px solid black",
+              background: cell ? cell.color : "white",
               display: "flex",
               alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer"
+              justifyContent: "center"
             }}
           >
-            {cell && "■"}
+            {cell && <img src={cell.sprite} width={50} />}
           </div>
         ))}
       </div>
 
       {/* TEAM */}
-      <h2>Team (klicken zum auswählen)</h2>
-      {team.map((p) => (
-        <div key={p.id} onClick={() => setSelected(p)}>
+      <h2>Team</h2>
+      {team.map(p => (
+        <div
+          key={p.id}
+          draggable
+          onDragStart={() => setSelected(p)}
+        >
           <img src={p.sprite} width={40} />
-          <span>{p.name}</span>
+
+          <input
+            value={p.nickname}
+            onChange={(e) => {
+              const newTeam = team.map(x =>
+                x.id === p.id ? { ...x, nickname: e.target.value } : x
+              );
+              setTeam(newTeam);
+            }}
+          />
         </div>
       ))}
 
       {/* BOX */}
       <h2>Box</h2>
-      {box.map((p) => (
+      {box.map(p => (
         <div key={p.id}>
           <img src={p.sprite} width={40} />
           <span>{p.name}</span>
@@ -122,13 +190,41 @@ export default function App() {
         </div>
       ))}
 
-      {/* Pokémon fangen */}
-      <h2>Catch Pokemon</h2>
-      {pokemonList.map((p) => (
-        <button key={p.name} onClick={() => catchPokemon(p)}>
-          {p.name}
-        </button>
-      ))}
+      {/* Catch Button */}
+      <button onClick={() => setShowCatch(true)}>
+        Catch Pokemon
+      </button>
+
+      {/* Modal */}
+      {showCatch && (
+        <div style={{ border: "2px solid black", padding: 10 }}>
+          <input
+            placeholder="Search..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+
+          {filtered.slice(0, 10).map(p => (
+            <div key={p.name} onClick={() => setSelectedPokemon(p)}>
+              {p.name}
+            </div>
+          ))}
+
+          {selectedPokemon && (
+            <>
+              <p>{selectedPokemon.name}</p>
+              <input
+                placeholder="Pattern z.B. 0,1,2"
+                value={pattern}
+                onChange={(e) => setPattern(e.target.value)}
+              />
+            </>
+          )}
+
+          <button onClick={catchPokemon}>Catch</button>
+          <button onClick={() => setShowCatch(false)}>Close</button>
+        </div>
+      )}
     </div>
   );
 }
