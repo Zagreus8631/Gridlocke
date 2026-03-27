@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 const emptyGrid = Array(9).fill(null);
 
 export default function App() {
-  // ================= STATE =================
   const [grid, setGrid] = useState(emptyGrid);
   const [team, setTeam] = useState([]);
   const [box, setBox] = useState([]);
@@ -26,7 +25,7 @@ export default function App() {
   const [pattern, setPattern] = useState(Array(9).fill(false));
   const [requiredTiles, setRequiredTiles] = useState(1);
 
-  // ================= LOAD POKEMON =================
+  // LOAD
   useEffect(() => {
     fetch("https://pokeapi.co/api/v2/pokemon?limit=300")
       .then(res => res.json())
@@ -37,12 +36,12 @@ export default function App() {
     p.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  // ================= GRID =================
+  // GRID LOGIC
   const getOffsets = (pattern) => {
     const active = pattern.map((v, i) => (v ? i : null)).filter(v => v !== null);
     if (!active.length) return [];
-
     const base = active[0];
+
     return active.map(i => {
       const r = Math.floor(i / 3);
       const c = i % 3;
@@ -64,7 +63,6 @@ export default function App() {
 
     let newGrid = [...grid];
 
-    // alte Position entfernen
     newGrid = newGrid.map(c => (c?.id === pokemon.id ? null : c));
 
     const offsets = getOffsets(pokemon.pattern);
@@ -82,7 +80,7 @@ export default function App() {
     setGrid(newGrid);
   };
 
-  // ================= CATCH =================
+  // CATCH
   const catchPokemon = async () => {
     if (!selectedPokemon || !nickname) return;
 
@@ -98,12 +96,11 @@ export default function App() {
     });
   };
 
-  // ================= RENDER =================
   return (
-    <div style={{ padding: 20 }}>
+    <div style={{ padding: 20, position: "relative" }}>
       <h1>Pokemon Grid</h1>
 
-      {/* PUNKTE */}
+      {/* Punkte */}
       <h2>
         Punkte: {points}
         <button onClick={() => setPoints(p => Math.min(3, p + 1))}>+1</button>
@@ -112,63 +109,70 @@ export default function App() {
       <button onClick={() => setEraser(!eraser)}>🧽</button>
       <button onClick={() => setBrush(!brush)}>🖌️</button>
 
-      {/* GRID */}
-      <h2>Grid</h2>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,80px)" }}>
-        {grid.map((cell, i) => (
-          <div
-            key={i}
-            onClick={() => {
-              if (cell) {
-                // entfernen
-                setGrid(grid.map((c, idx) => (idx === i ? null : c)));
-              } else if (dragging) {
-                placeOnGrid(i, dragging);
-                setDragging(null);
-              }
-            }}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={() => {
-              placeOnGrid(i, dragging);
-              setDragging(null);
-            }}
-            style={{
-              width: 80,
-              height: 80,
-              border: "1px solid black",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center"
-            }}
-          >
-            {cell && <img src={cell.sprite} width={40} />}
+      {/* GRID + TEAM nebeneinander */}
+      <div style={{ display: "flex", gap: 50 }}>
+        
+        {/* GRID */}
+        <div>
+          <h2>Grid</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,80px)" }}>
+            {grid.map((cell, i) => (
+              <div
+                key={i}
+                onClick={() => {
+                  if (cell) {
+                    setGrid(grid.map((c, idx) => (idx === i ? null : c)));
+                  } else if (dragging) {
+                    placeOnGrid(i, dragging);
+                    setDragging(null);
+                  }
+                }}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => {
+                  placeOnGrid(i, dragging);
+                  setDragging(null);
+                }}
+                style={{
+                  width: 80,
+                  height: 80,
+                  border: "1px solid black",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}
+              >
+                {cell && <img src={cell.sprite} width={40} />}
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
 
-      {/* TEAM */}
-      <h2>Team</h2>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)" }}>
-        {team.map(p => (
-          <div key={p.id} draggable onDragStart={() => setDragging(p)}>
-            <img src={p.sprite} width={40} />
-            {p.nickname}
+        {/* TEAM (RECHTS!) */}
+        <div>
+          <h2>Team</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)" }}>
+            {team.map(p => (
+              <div key={p.id} draggable onDragStart={() => setDragging(p)}>
+                <img src={p.sprite} width={40} />
+                {p.nickname}
 
-            <button onClick={() => {
-              setBox([...box, p]);
-              setTeam(team.filter(t => t.id !== p.id));
-            }}>
-              → Box
-            </button>
+                <button onClick={() => {
+                  setBox([...box, p]);
+                  setTeam(team.filter(t => t.id !== p.id));
+                }}>
+                  → Box
+                </button>
 
-            <button onClick={() => {
-              setGraveyard([...graveyard, p]);
-              setTeam(team.filter(t => t.id !== p.id));
-            }}>
-              💀
-            </button>
+                <button onClick={() => {
+                  setGraveyard([...graveyard, p]);
+                  setTeam(team.filter(t => t.id !== p.id));
+                }}>
+                  💀
+                </button>
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
       </div>
 
       {/* BOX */}
@@ -249,59 +253,73 @@ export default function App() {
         </div>
       )}
 
-      {/* PATTERN */}
+      {/* MODAL (FIX!) */}
       {patternModal && (
-        <div style={{ border: "2px solid black", padding: 10, marginTop: 10 }}>
-          <h3>
-            Muster für {patternModal.data.name} ({requiredTiles} Felder)
-          </h3>
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          background: "rgba(0,0,0,0.5)",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center"
+        }}>
+          <div style={{ background: "white", padding: 20 }}>
+            <h3>
+              Muster für {patternModal.data.name} ({requiredTiles} Felder)
+            </h3>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,40px)" }}>
-            {pattern.map((v, i) => (
-              <div
-                key={i}
-                onClick={() => {
-                  let active = pattern.filter(Boolean).length;
-                  let newPattern = [...pattern];
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,40px)" }}>
+              {pattern.map((v, i) => (
+                <div
+                  key={i}
+                  onClick={() => {
+                    let active = pattern.filter(Boolean).length;
+                    let newPattern = [...pattern];
 
-                  if (newPattern[i]) newPattern[i] = false;
-                  else {
-                    if (active >= requiredTiles) return;
-                    newPattern[i] = true;
-                  }
+                    if (newPattern[i]) newPattern[i] = false;
+                    else {
+                      if (active >= requiredTiles) return;
+                      newPattern[i] = true;
+                    }
 
-                  setPattern(newPattern);
-                }}
-                style={{
-                  width: 40,
-                  height: 40,
-                  border: "1px solid black",
-                  background: v ? "black" : "white"
-                }}
-              />
-            ))}
+                    setPattern(newPattern);
+                  }}
+                  style={{
+                    width: 40,
+                    height: 40,
+                    border: "1px solid black",
+                    background: v ? "black" : "white"
+                  }}
+                />
+              ))}
+            </div>
+
+            <button onClick={() => {
+              const p = patternModal.data;
+
+              const newPokemon = {
+                id: Date.now(),
+                name: p.name,
+                nickname: patternModal.nickname,
+                sprite: p.sprites.front_default,
+                pattern
+              };
+
+              setBox([...box, newPokemon]);
+
+              setPattern(Array(9).fill(false));
+              setPatternModal(null);
+              setSelectedPokemon(null);
+              setNickname("");
+            }}>
+              Bestätigen
+            </button>
+
+            <button onClick={() => setPatternModal(null)}>Abbrechen</button>
           </div>
-
-          <button onClick={() => {
-            const p = patternModal.data;
-
-            const newPokemon = {
-              id: Date.now(),
-              name: p.name,
-              nickname: patternModal.nickname,
-              sprite: p.sprites.front_default,
-              pattern
-            };
-
-            setBox([...box, newPokemon]);
-
-            setPattern(Array(9).fill(false));
-            setPatternModal(null);
-            setSelectedPokemon(null);
-            setNickname("");
-          }}>
-            Bestätigen
-          </button>
         </div>
       )}
     </div>
