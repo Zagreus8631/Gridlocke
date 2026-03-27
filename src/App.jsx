@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 
 const emptyGrid = Array(9).fill(null);
-const patternDB = {};
 
 const typeColors = {
   fire: "#e74c3c",
@@ -20,16 +19,20 @@ export default function App() {
   const [pokemonList, setPokemonList] = useState([]);
 
   const [selected, setSelected] = useState(null);
+  const [dragging, setDragging] = useState(null);
   const [hoverIndex, setHoverIndex] = useState(null);
+
+  const [points, setPoints] = useState(3);
+  const [brush, setBrush] = useState(false);
+  const [eraser, setEraser] = useState(false);
 
   const [showCatch, setShowCatch] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedPokemon, setSelectedPokemon] = useState(null);
+  const [nickname, setNickname] = useState("");
 
   const [pattern, setPattern] = useState(Array(9).fill(false));
   const [requiredTiles, setRequiredTiles] = useState(1);
-
-  const [nickname, setNickname] = useState("");
   const [patternModal, setPatternModal] = useState(null);
 
   const [message, setMessage] = useState("");
@@ -70,40 +73,59 @@ export default function App() {
     return r * 3 + c;
   };
 
-  const canPlace = (pokemon, index) => {
+  const placeOnGrid = (index, pokemon) => {
+    if (!pokemon) return;
+
+    let newGrid = [...grid];
+
+    // remove old placement
+    newGrid = newGrid.map(c => (c?.id === pokemon.id ? null : c));
+
     const offsets = getOffsets(pokemon.pattern);
 
     for (let o of offsets) {
       const pos = getGridIndex(index, o);
-      if (pos === null || grid[pos]) return false;
-    }
-    return true;
-  };
-
-  const placeOnGrid = (index) => {
-    if (!selected) return;
-
-    if (!canPlace(selected, index)) {
-      setMessage("Platz ungültig");
-      return;
+      if (pos === null || newGrid[pos]) {
+        setMessage("Ungültige Position");
+        return;
+      }
     }
 
-    let newGrid = [...grid];
-    newGrid = newGrid.map(c => (c?.id === selected.id ? null : c));
-
-    getOffsets(selected.pattern).forEach(o => {
+    offsets.forEach(o => {
       const pos = getGridIndex(index, o);
-      newGrid[pos] = selected;
+      newGrid[pos] = pokemon;
     });
 
     setGrid(newGrid);
     setMessage("");
   };
 
-  const removeFromGrid = (index) => {
-    const target = grid[index];
-    if (!target) return;
-    setGrid(grid.map(c => (c?.id === target.id ? null : c)));
+  const handleGridClick = (index) => {
+    const cell = grid[index];
+
+    // Radiergummi
+    if (eraser && cell) {
+      if (points <= 0) return;
+
+      const count = grid.filter(c => c?.id === cell.id).length;
+      if (count <= 1) return;
+
+      setPoints(points - 1);
+
+      let newGrid = [...grid];
+      newGrid[index] = null;
+      setGrid(newGrid);
+      return;
+    }
+
+    // aufnehmen zum verschieben
+    if (cell) {
+      setDragging(cell);
+      setSelected(cell);
+    } else if (dragging) {
+      placeOnGrid(index, dragging);
+      setDragging(null);
+    }
   };
 
   const catchPokemon = async () => {
@@ -112,16 +134,14 @@ export default function App() {
     const res = await fetch(selectedPokemon.url);
     const data = await res.json();
 
-    const tiles = getEVTiles(data.stats);
-
-    setRequiredTiles(tiles);
+    setRequiredTiles(getEVTiles(data.stats));
     setPatternModal({ data, nickname });
   };
 
   const confirmPattern = () => {
     const count = pattern.filter(v => v).length;
     if (count !== requiredTiles) {
-      setMessage(`Genau ${requiredTiles} Felder setzen!`);
+      setMessage(`Genau ${requiredTiles} Felder!`);
       return;
     }
 
@@ -130,13 +150,11 @@ export default function App() {
     const newPokemon = {
       id: Date.now(),
       name: p.name,
-      nickname: patternModal.nickname,
+      nickname,
       sprite: p.sprites.front_default,
-      color: typeColors[p.types[0].type.name] || "gray",
-      pattern
+      pattern,
+      color: typeColors[p.types[0].type.name] || "gray"
     };
-
-    patternDB[p.name] = pattern;
 
     setBox([...box, newPokemon]);
 
@@ -150,40 +168,49 @@ export default function App() {
     <div style={{ padding: 20 }}>
       <h1>Pokemon Grid</h1>
 
+      <h2>Punkte: {points}</h2>
+
+      <button onClick={() => setBrush(!brush)}>🖌️ Brush</button>
+      <button onClick={() => setEraser(!eraser)}>🧽 Eraser</button>
+
       {message && <p style={{ color: "red" }}>{message}</p>}
 
       <div style={{ display: "flex", gap: 40 }}>
-
         {/* GRID */}
         <div>
           <h2>Grid</h2>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3,80px)" }}>
             {grid.map((cell, i) => {
-              let preview = null;
+              let previewCells = [];
 
-              if (hoverIndex === i && selected) {
-                preview = getOffsets(selected.pattern)
-                  .map(o => getGridIndex(i, o))
-                  .includes(i);
+              if (hoverIndex !== null && selected) {
+                previewCells = getOffsets(selected.pattern)
+                  .map(o => getGridIndex(hoverIndex, o))
+                  .filter(v => v !== null);
               }
+
+              const isPreview = previewCells.includes(i);
 
               return (
                 <div
                   key={i}
-                  onClick={() => removeFromGrid(i)}
+                  onClick={() => handleGridClick(i)}
                   onDragOver={(e) => {
                     e.preventDefault();
                     setHoverIndex(i);
                   }}
-                  onDrop={() => placeOnGrid(i)}
+                  onDrop={() => {
+                    placeOnGrid(i, selected);
+                    setDragging(null);
+                  }}
                   style={{
                     width: 80,
                     height: 80,
                     border: "1px solid black",
                     background: cell
                       ? cell.color
-                      : preview
-                      ? "rgba(0,0,0,0.2)"
+                      : isPreview
+                      ? "rgba(0,0,0,0.3)"
                       : "white"
                   }}
                 >
@@ -198,22 +225,19 @@ export default function App() {
         <div>
           <h2>Team</h2>
           {team.map(p => (
-            <div key={p.id} style={{ display: "flex", gap: 10 }}>
-              <div draggable onDragStart={() => setSelected(p)}>
-                <img src={p.sprite} width={40} />
-                <div>{p.nickname}</div>
-              </div>
+            <div key={p.id} draggable onDragStart={() => setSelected(p)}>
+              <img src={p.sprite} width={40} />
+              <div>{p.nickname}</div>
 
-              {/* Muster */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3,15px)" }}>
+              {/* Muster Vorschau */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3,10px)" }}>
                 {p.pattern.map((val, i) => (
                   <div
                     key={i}
                     style={{
-                      width: 15,
-                      height: 15,
-                      background: val ? p.color : "#eee",
-                      border: "1px solid black"
+                      width: 10,
+                      height: 10,
+                      background: val ? p.color : "#eee"
                     }}
                   />
                 ))}
@@ -243,6 +267,7 @@ export default function App() {
       <h2>Box</h2>
       {box.map(p => (
         <div key={p.id}>
+          <img src={p.sprite} width={40} />
           {p.nickname}
           <button onClick={() => {
             if (team.length >= 6) return;
@@ -274,7 +299,7 @@ export default function App() {
             const icon = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-viii/icons/${id}.png`;
 
             return (
-              <div key={p.name} style={{ display: "flex", gap: 10 }}>
+              <div key={p.name}>
                 <span
                   style={{
                     fontWeight: selectedPokemon?.name === p.name ? "bold" : "normal",
