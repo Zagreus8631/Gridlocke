@@ -17,7 +17,7 @@ export default function App() {
   const [graveyard, setGraveyard] = useState([]);
 
   const [pokemonList, setPokemonList] = useState([]);
-const [points, setPoints] = useState(3);<
+const [points, setPoints] = useState(3);
   const [selected, setSelected] = useState(null);
   const [dragging, setDragging] = useState(null);
   const [hoverIndex, setHoverIndex] = useState(null);
@@ -40,7 +40,6 @@ const [evoModal, setEvoModal] = useState(null);
 const [evoSearch, setEvoSearch] = useState("");
 
 const [speciesPatterns, setSpeciesPatterns] = useState({});
-const [points, setPoints] = useState(3);
 
   useEffect(() => {
     fetch("https://pokeapi.co/api/v2/pokemon?limit=200")
@@ -129,7 +128,24 @@ const evoFiltered = pokemonList.filter(p =>
 if (brush && cell) {
   const pokemonInTeam = team.find(t => t.id === cell.id);
   if (!pokemonInTeam || points <= 0) return;
-const pokemonInTeam = team.find(t => t.id === cell?.id);
+
+  if (pokemonInTeam.eraserDebt > 0) {
+    setMessage("Du musst erst Radierer verwenden!");
+    return;
+  }
+
+  setPoints(prev => prev - 1);
+
+  setTeam(prev =>
+    prev.map(t =>
+      t.id === cell.id
+        ? { ...t, color: "#000000" }
+        : t
+    )
+  );
+
+  return;
+}
 
 if (pokemonInTeam?.eraserDebt > 0) {
   setMessage("Du musst erst Radierer verwenden!");
@@ -151,7 +167,7 @@ if (pokemonInTeam?.eraserDebt > 0) {
     if (eraser && cell) {
       const pokemonInTeam = team.find(t => t.id === cell.id);
 
-if (!pokemonInTeam || pokemonInTeam.points <= 0) return;
+if (!pokemonInTeam || points <= 0) return;
 
       const count = grid.filter(c => c?.id === cell.id).length;
       if (count <= 1) return;
@@ -206,22 +222,23 @@ setTeam(prev =>
 
 const newPokemon = {
   id: Date.now(),
-  name: data.name,
-  nickname: evoModal.nickname || evoModal.name,
-  sprite: data.sprites.front_default,
-  pattern: [...savedPattern],
-  color: evoModal.color,
-  eraserDebt: evoModal.eraserDebt || 0
+  name: p.name,
+  nickname: patternModal.nickname,
+  sprite: p.sprites.front_default,
+  pattern: [...pattern],
+  color: typeColors[p.types[0].type.name] || "gray",
+  eraserDebt: patternModal.eraserDebt || 0
 };
+
 setSpeciesPatterns(prev => ({
   ...prev,
   [p.name]: [...pattern]
 }));
 
-    if (patternModal.evolvingId) {
+if (patternModal.evolvingId) {
   setTeam(prev => [...prev, newPokemon]);
 } else {
-  setBox([...box, newPokemon]);
+  setBox(prev => [...prev, newPokemon]);
 }
 
     setPattern(Array(9).fill(false));
@@ -494,18 +511,18 @@ setSpeciesPatterns(prev => ({
         const newPokemon = {
           id: Date.now(),
           name: p.name,
-Points: 3,
+ 3,
           nickname: patternModal.nickname,
           sprite: p.sprites.front_default,
           pattern: [...pattern],
           color: typeColors[p.types[0].type.name] || "gray",
-eraserUsed: patternModal.eraserUsed || 0
+eraserDebt: patternModal.eraserDebt || 0
         };
 
-        if (patternModal.evolvingId) {
+if (patternModal.evolvingId) {
   setTeam(prev => [...prev, newPokemon]);
 } else {
-  setBox([...box, newPokemon]);
+  setBox(prev => [...prev, newPokemon]);
 }
 
         // Reset
@@ -574,12 +591,12 @@ if (savedPattern) {
   const newPokemon = {
     id: Date.now(),
     name: data.name,
-Points: 3,
+ 3,
     nickname: evoModal.nickname || evoModal.name,
     sprite: data.sprites.front_default,
     pattern: [...savedPattern],
     color: typeColors[data.types[0].type.name] || "gray",
-    eraserUsed: evoModal.eraserUsed || 0
+    eraserDebt: evoModal.eraserDebt || 0
   };
 
   setTeam(prev => [...prev, newPokemon]);
@@ -593,7 +610,7 @@ Points: 3,
     data,
     nickname: evoModal.nickname || evoModal.name,
     evolvingId: evoModal.id,
-    eraserUsed: evoModal.eraserUsed || 0
+    eraserDebt: evoModal.eraserDebt || 0
   });
 }
 
