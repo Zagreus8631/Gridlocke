@@ -22,7 +22,7 @@ export default function App() {
   const [dragging, setDragging] = useState(null);
   const [hoverIndex, setHoverIndex] = useState(null);
 
-  const [points, setPoints] = useState(0);
+
   const [brush, setBrush] = useState(false);
   const [eraser, setEraser] = useState(false);
 
@@ -141,13 +141,7 @@ if (!pokemonInTeam || (pokemonInTeam.eraserUsed || 0) <= 0) return;
   )
 );
 
-setTeam(prev =>
-  prev.map(t =>
-    t.id === cell.id
-      ? { ...t, eraserUsed: (t.eraserUsed || 0) + 1 }
-      : t
-  )
-);
+
 
       let newGrid = [...grid];
       newGrid[index] = null;
@@ -196,10 +190,7 @@ const newPokemon = {
 };
 setSpeciesPatterns(prev => ({
   ...prev,
-  setSpeciesPatterns(prev => ({
-  ...prev,
-  [p.name]: [...pattern]   // 🔥 WICHTIG: Kopie!
-}));
+  [p.name]: [...pattern]
 }));
 
     if (patternModal.evolvingId) {
@@ -472,6 +463,11 @@ setEvoSearch("");
         }
 
         const p = patternModal.data;
+
+setSpeciesPatterns(prev => ({
+  ...prev,
+  [p.name]: [...pattern]
+}));
 
         const newPokemon = {
           id: Date.now(),
