@@ -294,7 +294,7 @@ export default function App() {
         <div>
           <input value={search} onChange={(e) => setSearch(e.target.value)} />
 
-          {filtered.map(p => (
+          {filtered.slice(0, 10).map(p => (
             <div
               key={p.name}
               style={clickable}
