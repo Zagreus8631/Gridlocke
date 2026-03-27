@@ -47,6 +47,11 @@ export default function App() {
     p.name.toLowerCase().includes(search.toLowerCase())
   );
 
+  const getEVTiles = (stats) => {
+    const ev = stats.reduce((sum, s) => sum + s.effort, 0);
+    return Math.max(1, ev + 1);
+  };
+
   const getOffsets = (pattern) => {
     const active = pattern.map((v, i) => (v ? i : null)).filter(v => v !== null);
     if (!active.length) return [];
@@ -78,7 +83,10 @@ export default function App() {
 
     for (let o of offsets) {
       const pos = getGridIndex(index, o);
-      if (pos === null || newGrid[pos]) return;
+      if (pos === null || newGrid[pos]) {
+        setMessage("Ungültige Position");
+        return;
+      }
     }
 
     offsets.forEach(o => {
@@ -87,6 +95,7 @@ export default function App() {
     });
 
     setGrid(newGrid);
+    setMessage("");
   };
 
   const handleGridClick = (index) => {
@@ -121,11 +130,17 @@ export default function App() {
     const res = await fetch(selectedPokemon.url);
     const data = await res.json();
 
-    setRequiredTiles(1);
+    setRequiredTiles(getEVTiles(data.stats));
     setPatternModal({ data, nickname });
   };
 
   const confirmPattern = () => {
+    const count = pattern.filter(v => v).length;
+    if (count !== requiredTiles) {
+      setMessage(`Genau ${requiredTiles} Felder!`);
+      return;
+    }
+
     const p = patternModal.data;
 
     const newPokemon = {
@@ -151,54 +166,110 @@ export default function App() {
 
       <h2>
         Punkte: {points}
-        <button onClick={() => setPoints(p => Math.min(3, p + 1))}>+1</button>
+        <button onClick={() => setPoints(p => Math.min(3, p + 1))}>
+          +1
+        </button>
       </h2>
 
       <button onClick={() => setBrush(!brush)}>🖌️</button>
       <button onClick={() => setEraser(!eraser)}>🧽</button>
+
+      {message && <p style={{ color: "red" }}>{message}</p>}
 
       <div style={{ display: "flex", gap: 40 }}>
         {/* GRID */}
         <div>
           <h2>Grid</h2>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3,80px)" }}>
-            {grid.map((cell, i) => (
-              <div
-                key={i}
-                onClick={() => handleGridClick(i)}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={() => {
-                  placeOnGrid(i, dragging);
-                  setDragging(null);
-                }}
-                style={{
-                  width: 80,
-                  height: 80,
-                  border: "1px solid black",
-                  background: cell ? cell.color : "white"
-                }}
-              >
-                {cell && <img src={cell.sprite} width={40} />}
-              </div>
-            ))}
+            {grid.map((cell, i) => {
+              let previewCells = [];
+
+              if (hoverIndex !== null && dragging) {
+                previewCells = getOffsets(dragging.pattern)
+                  .map(o => getGridIndex(hoverIndex, o))
+                  .filter(v => v !== null);
+              }
+
+              return (
+                <div
+                  key={i}
+                  onClick={() => handleGridClick(i)}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setHoverIndex(i);
+                  }}
+                  onDrop={() => {
+                    placeOnGrid(i, dragging);
+                    setDragging(null);
+                  }}
+                  style={{
+                    width: 80,
+                    height: 80,
+                    border: "1px solid black",
+                    background: previewCells.includes(i)
+                      ? "rgba(0,0,0,0.3)"
+                      : cell
+                      ? cell.color
+                      : "white"
+                  }}
+                >
+                  {cell && <img src={cell.sprite} width={40} />}
+                </div>
+              );
+            })}
           </div>
         </div>
 
         {/* TEAM */}
         <div>
           <h2>Team</h2>
-          {team.map(p => (
-            <div key={p.id} draggable onDragStart={() => setDragging(p)}>
-              <img src={p.sprite} width={40} />
-              {p.nickname}
-              <button onClick={() => {
-                setGraveyard([...graveyard, p]);
-                setTeam(team.filter(t => t.id !== p.id));
-              }}>
-                💀
-              </button>
-            </div>
-          ))}
+
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2, 1fr)",
+            gap: 10
+          }}>
+            {team.map(p => (
+              <div
+                key={p.id}
+                draggable
+                onDragStart={() => {
+                  setDragging(p);
+                  setSelected(p);
+                }}
+              >
+                <img src={p.sprite} width={40} />
+                <div>{p.nickname}</div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3,10px)" }}>
+                  {p.pattern.map((val, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        width: 10,
+                        height: 10,
+                        background: val ? p.color : "#eee"
+                      }}
+                    />
+                  ))}
+                </div>
+
+                <button onClick={() => {
+                  setBox([...box, p]);
+                  setTeam(team.filter(t => t.id !== p.id));
+                }}>
+                  → Box
+                </button>
+
+                <button onClick={() => {
+                  setGraveyard([...graveyard, p]);
+                  setTeam(team.filter(t => t.id !== p.id));
+                }}>
+                  💀
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -209,6 +280,7 @@ export default function App() {
           <img src={p.sprite} width={40} />
           {p.nickname}
           <button onClick={() => {
+            if (team.length >= 6) return;
             setTeam([...team, p]);
             setBox(box.filter(b => b.id !== p.id));
           }}>
@@ -220,19 +292,8 @@ export default function App() {
       {/* GRAVEYARD */}
       <h2>Graveyard</h2>
       {graveyard.map(p => (
-        <div key={p.id} style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <img src={p.sprite} width={40} />
-          <span>{p.nickname}</span>
-
-          <button onClick={() => {
-            setBox([...box, p]);
-            setGraveyard(graveyard.filter(g => g.id !== p.id));
-          }}>
-            → Box
-          </button>
-        </div>
+        <div key={p.id}>{p.nickname}</div>
       ))}
-
     </div>
   );
 }
