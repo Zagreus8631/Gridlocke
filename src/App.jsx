@@ -272,8 +272,27 @@ export default function App() {
       {/* BOX */}
       <h2>Box</h2>
       {box.map(p => (
-        <div key={p.id}>
-          {p.nickname}
+  <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+    
+    <img src={p.sprite} width={40} />
+
+    <div>{p.nickname}</div>
+
+    <span
+      style={{ cursor: "pointer" }}
+      onMouseEnter={(e) => e.target.style.textDecoration = "underline"}
+      onMouseLeave={(e) => e.target.style.textDecoration = "none"}
+      onClick={() => {
+        if (team.find(t => t.id === p.id)) return;
+        if (team.length >= 6) return;
+        setTeam([...team, p]);
+      }}
+    >
+      → To Team
+    </span>
+
+  </div>
+))}
           <span
             style={clickable}
             onMouseEnter={addHover}
