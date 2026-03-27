@@ -66,7 +66,6 @@ export default function App() {
 
     let newGrid = [...grid];
 
-    // alte Position entfernen
     newGrid = newGrid.map(c => (c?.id === pokemon.id ? null : c));
 
     const offsets = getOffsets(pokemon.pattern);
@@ -91,7 +90,12 @@ export default function App() {
     const res = await fetch(selectedPokemon.url);
     const data = await res.json();
 
-    // WICHTIG: keine automatische Überschreibung deiner Muster!
+    // ✅ EV + 1 SYSTEM
+    const evSum = data.stats.reduce((sum, s) => sum + s.effort, 0);
+    const required = evSum + 1;
+
+    setRequiredTiles(required);
+
     setPatternModal({
       data,
       nickname
@@ -99,10 +103,9 @@ export default function App() {
   };
 
   return (
-    <div style={{ padding: 20, position: "relative" }}>
+    <div style={{ padding: 20 }}>
       <h1>Pokemon Grid</h1>
 
-      {/* Punkte */}
       <h2>
         Punkte: {points}
         <button onClick={() => setPoints(p => Math.min(3, p + 1))}>
@@ -113,7 +116,6 @@ export default function App() {
       <button onClick={() => setEraser(!eraser)}>🧽</button>
       <button onClick={() => setBrush(!brush)}>🖌️</button>
 
-      {/* GRID + TEAM */}
       <div style={{ display: "flex", gap: 40 }}>
         {/* GRID */}
         <div>
@@ -173,7 +175,6 @@ export default function App() {
                     );
                   })}
 
-                {/* CONTENT */}
                 {cell && (
                   <div style={{
                     textAlign: "center",
@@ -199,7 +200,6 @@ export default function App() {
                 key={p.id}
                 draggable
                 onDragStart={() => setDragging(p)}
-                style={{ marginBottom: 10 }}
               >
                 <img src={p.sprite} width={40} />
                 <div>{p.nickname}</div>
@@ -221,20 +221,6 @@ export default function App() {
                     />
                   ))}
                 </div>
-
-                <button onClick={() => {
-                  setBox([...box, p]);
-                  setTeam(team.filter(t => t.id !== p.id));
-                }}>
-                  → Box
-                </button>
-
-                <button onClick={() => {
-                  setGraveyard([...graveyard, p]);
-                  setTeam(team.filter(t => t.id !== p.id));
-                }}>
-                  💀
-                </button>
               </div>
             ))}
           </div>
@@ -247,29 +233,12 @@ export default function App() {
         <div key={p.id}>
           <img src={p.sprite} width={40} />
           {p.nickname}
-
           <button onClick={() => {
             if (team.length >= 6) return;
             setTeam([...team, p]);
             setBox(box.filter(b => b.id !== p.id));
           }}>
             → Team
-          </button>
-        </div>
-      ))}
-
-      {/* GRAVEYARD */}
-      <h2>Graveyard</h2>
-      {graveyard.map(p => (
-        <div key={p.id}>
-          <img src={p.sprite} width={40} />
-          {p.nickname}
-
-          <button onClick={() => {
-            setBox([...box, p]);
-            setGraveyard(graveyard.filter(g => g.id !== p.id));
-          }}>
-            → Box
           </button>
         </div>
       ))}
@@ -284,7 +253,6 @@ export default function App() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Pokemon suchen..."
           />
 
           {filtered.slice(0, 10).map(p => {
@@ -333,7 +301,7 @@ export default function App() {
           alignItems: "center"
         }}>
           <div style={{ background: "white", padding: 20 }}>
-            <h3>Muster festlegen</h3>
+            <h3>Muster festlegen ({requiredTiles} Felder)</h3>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3,40px)" }}>
               {pattern.map((v, i) => (
@@ -341,7 +309,15 @@ export default function App() {
                   key={i}
                   onClick={() => {
                     let newPattern = [...pattern];
-                    newPattern[i] = !newPattern[i];
+                    const activeCount = newPattern.filter(Boolean).length;
+
+                    if (!newPattern[i]) {
+                      if (activeCount >= requiredTiles) return;
+                      newPattern[i] = true;
+                    } else {
+                      newPattern[i] = false;
+                    }
+
                     setPattern(newPattern);
                   }}
                   style={{
@@ -355,6 +331,13 @@ export default function App() {
             </div>
 
             <button onClick={() => {
+              const activeCount = pattern.filter(Boolean).length;
+
+              if (activeCount !== requiredTiles) {
+                alert(`Du musst genau ${requiredTiles} Felder auswählen!`);
+                return;
+              }
+
               const p = patternModal.data;
 
               const newPokemon = {
