@@ -277,8 +277,7 @@ setSpeciesPatterns(prev => ({
         style={{ border: "1px solid #ccc", padding: 5 }}
       >
         <img src={p.sprite} width={40} />
-        <div><img src={p.sprite} width={40} />
-{p.nickname}</div>
+        <div>{p.nickname}</div>
 
         {/* Muster Vorschau */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3,10px)" }}>
@@ -344,7 +343,8 @@ setEvoSearch("");
       <h2>Graveyard</h2>
 {graveyard.map(p => (
   <div key={p.id}>
-    {p.nickname}
+    <img src={p.sprite} width={40} />
+{p.nickname}
     <button onClick={() => {
       setBox([...box, p]);
       setGraveyard(graveyard.filter(g => g.id !== p.id));
@@ -543,6 +543,8 @@ const newRequired = getEVTiles(data.stats);
 
 const savedPattern = speciesPatterns[data.name];
 
+const savedPattern = speciesPatterns[data.name];
+
 if (savedPattern) {
   const newPokemon = {
     id: Date.now(),
@@ -555,11 +557,19 @@ if (savedPattern) {
   };
 
   setTeam(prev => [...prev, newPokemon]);
-}
-
-  setTeam(prev => [...prev, newPokemon]);
   setPatternModal(null);
 } else {
+  // ❗ neues Muster nötig
+  setPattern(Array(9).fill(false));
+  setRequiredTiles(newRequired);
+
+  setPatternModal({
+    data,
+    nickname: evoModal.nickname || evoModal.name,
+    evolvingId: evoModal.id,
+    eraserUsed: evoModal.eraserUsed || 0
+  });
+}
   // ❗ neues Muster nötig
   setPattern(Array(9).fill(false));
   setRequiredTiles(newRequired);
