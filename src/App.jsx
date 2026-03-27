@@ -201,9 +201,9 @@ export default function App() {
                     setHoverIndex(i);
                   }}
                   onDrop={() => {
-                    placeOnGrid(i, dragging);
-                    setDragging(null);
-                  }}
+  placeOnGrid(i, dragging);
+  setDragging(null);
+}}
                   style={{
                     width: 80,
                     height: 80,
@@ -232,7 +232,10 @@ export default function App() {
     gap: 10
   }}>
     {team.map(p => (
-      <div key={p.id} draggable onDragStart={() => setSelected(p)}
+      <div key={p.id} draggable onDragStart={() => {
+  setDragging(p);
+  setSelected(p);
+}}
         style={{ border: "1px solid #ccc", padding: 5 }}
       >
         <img src={p.sprite} width={40} />
