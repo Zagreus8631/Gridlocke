@@ -83,12 +83,15 @@ const evoFiltered = pokemonList.filter(p =>
   };
 
   const placeOnGrid = (index, pokemon) => {
-    if (!pokemon) return;
+  if (!pokemon) return;
 
-    let newGrid = [...grid];
-    newGrid = newGrid.map(c => (c?.id === pokemon.id ? null : c));
+  // 🔥 NEU: immer aktuelles Pokémon aus Team holen
+  const current = team.find(t => t.id === pokemon.id) || pokemon;
 
-    const offsets = getOffsets(pokemon.pattern);
+  let newGrid = [...grid];
+  newGrid = newGrid.map(c => (c?.id === current.id ? null : c));
+
+  const offsets = getOffsets(current.pattern);
 
     for (let o of offsets) {
   const pos = getGridIndex(index, o);
@@ -117,7 +120,7 @@ const evoFiltered = pokemonList.filter(p =>
 
     offsets.forEach(o => {
       const pos = getGridIndex(index, o);
-      newGrid[pos] = pokemon;
+      newGrid[pos] = current;
     });
 
     setGrid(newGrid);
