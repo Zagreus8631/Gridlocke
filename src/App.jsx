@@ -250,7 +250,6 @@ export default function App() {
       {box.map(p => (
         <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <img src={p.sprite} width={40} />
-
           <div>{p.nickname}</div>
 
           <span
@@ -280,28 +279,43 @@ export default function App() {
           {filtered.slice(0, 10).map(p => (
             <div
               key={p.name}
-              style={{ cursor: "pointer" }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                cursor: "pointer"
+              }}
               onMouseEnter={addHover}
               onMouseLeave={removeHover}
-              onClick={() => setSelectedPokemon(p)}
+              onClick={() => {
+                setSelectedPokemon(p);
+                setNickname("");
+              }}
             >
-              {p.name}
+              <span style={{
+                fontWeight: selectedPokemon?.name === p.name ? "bold" : "normal"
+              }}>
+                {p.name}
+              </span>
+
+              {selectedPokemon?.name === p.name && (
+                <>
+                  <input
+                    placeholder="Nickname..."
+                    value={nickname}
+                    onChange={(e) => setNickname(e.target.value)}
+                  />
+
+                  <button onClick={(e) => {
+                    e.stopPropagation();
+                    catchPokemon();
+                  }}>
+                    Weiter
+                  </button>
+                </>
+              )}
             </div>
           ))}
-
-          {selectedPokemon && (
-            <div>
-              <b>{selectedPokemon.name}</b>
-
-              <input
-                placeholder="Nickname eingeben..."
-                value={nickname}
-                onChange={(e) => setNickname(e.target.value)}
-              />
-            </div>
-          )}
-
-          <button onClick={catchPokemon}>Weiter</button>
         </div>
       )}
 
