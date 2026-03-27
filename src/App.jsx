@@ -36,7 +36,8 @@ export default function App() {
   const [evolvingId, setEvolvingId] = useState(null);
   const [colorPickerId, setColorPickerId] = useState(null);
 
-  const [pendingEvolution, setPendingEvolution] = useState(null);
+  const [eraseMode, setEraseMode] = useState(false);
+  const [patternEditId, setPatternEditId] = useState(null);
 
   useEffect(() => {
     fetch("https://pokeapi.co/api/v2/pokemon?limit=200")
@@ -80,7 +81,7 @@ export default function App() {
     const offsets = getOffsets(selected.pattern);
     const newGrid = [...grid];
 
-    // Nur 1 Instanz
+    // nur 1 Instanz
     for (let i = 0; i < newGrid.length; i++) {
       if (newGrid[i]?.id === selected.id) newGrid[i] = null;
     }
@@ -110,7 +111,6 @@ export default function App() {
     setMessage("");
   };
 
-  // 👉 TEAM → BOX
   const removeFromTeam = (pokemon) => {
     setTeam(team.filter(p => p.id !== pokemon.id));
     setBox([...box, pokemon]);
@@ -149,65 +149,50 @@ export default function App() {
     if (points < 3) setPoints(points + 1);
   };
 
+  // 🧽 Erase Mode
   const eraseTile = (pokemon, index) => {
-    const activeCount = pokemon.pattern.filter(v => v).length;
-    if (activeCount <= 1 || points < 1) return;
+    if (!eraseMode) return;
+
+    const count = pokemon.pattern.filter(v => v).length;
+    if (count <= 1 || points < 1) return;
 
     pokemon.pattern[index] = false;
+
     setPoints(points - 1);
+    setEraseMode(false);
     setTeam([...team]);
   };
 
-  const changeColor = (pokemon, newColor) => {
+  const changeColor = (pokemon, color) => {
     if (points < 2) return;
 
-    pokemon.color = newColor;
+    pokemon.color = color;
     setPoints(points - 2);
     setColorPickerId(null);
     setTeam([...team]);
   };
 
-  // 👉 EVOLUTION LOGIK
-  const handleEvolution = async (basePokemon, evo) => {
+  // 🔄 Evolution
+  const handleEvolution = async (pokemon, evo) => {
     const res = await fetch(evo.url);
     const data = await res.json();
 
-    // 🔍 Check DB (Team + Box)
-    const existing = [...team, ...box].find(p => p.name === data.name);
+    pokemon.name = data.name;
+    pokemon.sprite = data.sprites.front_default;
 
-    basePokemon.name = data.name;
-    basePokemon.sprite = data.sprites.front_default;
+    // aus Grid entfernen!
+    setGrid(grid.map(c => (c?.id === pokemon.id ? null : c)));
 
-    if (existing) {
-      basePokemon.pattern = [...existing.pattern];
-      basePokemon.color = existing.color;
-    } else {
-      // neues Pattern nötig
-      setPendingEvolution(basePokemon);
-      setPattern(Array(9).fill(false));
-      setPattern(prev => {
-        const p = [...prev];
-        p[0] = true;
-        return p;
-      });
-      return;
-    }
-
-    setTeam([...team]);
-    setGrid(grid.map(c => (c?.id === basePokemon.id ? basePokemon : c)));
-
-    setEvolvingId(null);
-    setSearch("");
+    setPatternEditId(pokemon.id);
+    setPattern(Array(9).fill(false));
   };
 
-  const confirmEvolutionPattern = () => {
-    pendingEvolution.pattern = pattern;
+  const savePattern = (pokemon) => {
+    pokemon.pattern = pattern;
 
-    setTeam([...team]);
-    setGrid(grid.map(c => (c?.id === pendingEvolution.id ? pendingEvolution : c)));
-
-    setPendingEvolution(null);
+    setPatternEditId(null);
     setPattern(Array(9).fill(false));
+    setTeam([...team]);
   };
 
   return (
@@ -217,7 +202,12 @@ export default function App() {
       <h2>
         Punkte: {points}
         <button onClick={addPoint}>+1</button>
-        🧽(1) 🖌️(2)
+
+        <button onClick={() => setEraseMode(!eraseMode)}>
+          🧽 {eraseMode ? "ON" : ""}
+        </button>
+
+        🖌️ (2)
       </h2>
 
       {message && <p style={{ color: "red" }}>{message}</p>}
@@ -281,15 +271,28 @@ export default function App() {
                 {/* Farbe */}
                 {colorPickerId === p.id ? (
                   Object.entries(typeColors).map(([t, c]) => (
-                    <span key={t} onClick={() => changeColor(p, c)}
-                      style={{ width: 20, height: 20, background: c, display: "inline-block" }} />
+                    <span
+                      key={t}
+                      title={t}
+                      onClick={() => changeColor(p, c)}
+                      style={{
+                        width: 20,
+                        height: 20,
+                        background: c,
+                        display: "inline-block",
+                        margin: 2,
+                        cursor: "pointer"
+                      }}
+                    />
                   ))
                 ) : (
                   <button onClick={() => setColorPickerId(p.id)}>🖌️</button>
                 )}
 
                 {/* Evolution */}
-                {evolvingId === p.id ? (
+                <button onClick={() => setEvolvingId(p.id)}>⬆️</button>
+
+                {evolvingId === p.id && (
                   <div>
                     <input value={search} onChange={(e) => setSearch(e.target.value)} />
                     {filtered.slice(0, 5).map(evo => (
@@ -298,10 +301,32 @@ export default function App() {
                       </div>
                     ))}
                   </div>
-                ) : (
-                  <button onClick={() => setEvolvingId(p.id)}>⬆️</button>
                 )}
               </div>
+
+              {/* Pattern Editor bei Evolution */}
+              {patternEditId === p.id && (
+                <div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3,30px)" }}>
+                    {pattern.map((val, i) => (
+                      <div
+                        key={i}
+                        onClick={() => {
+                          const newP = [...pattern];
+                          newP[i] = !newP[i];
+                          setPattern(newP);
+                        }}
+                        style={{
+                          width: 30,
+                          height: 30,
+                          background: val ? "black" : "#eee"
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <button onClick={() => savePattern(p)}>Save</button>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -318,56 +343,6 @@ export default function App() {
       ))}
 
       <button onClick={() => setShowCatch(true)}>Catch Pokemon</button>
-
-      {/* Catch */}
-      {showCatch && (
-        <div>
-          <input value={search} onChange={(e) => setSearch(e.target.value)} />
-          {filtered.slice(0, 10).map(p => (
-            <div key={p.name} onClick={() => setSelectedPokemon(p)}>
-              {p.name}
-            </div>
-          ))}
-
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,40px)" }}>
-            {pattern.map((val, i) => (
-              <div key={i}
-                onClick={() => {
-                  const newP = [...pattern];
-                  newP[i] = !newP[i];
-                  setPattern(newP);
-                }}
-                style={{ width: 40, height: 40, background: val ? "black" : "#eee" }}
-              />
-            ))}
-          </div>
-
-          <input value={nickname} onChange={(e) => setNickname(e.target.value)} />
-          <button onClick={catchPokemon}>Catch</button>
-        </div>
-      )}
-
-      {/* Evolution Pattern */}
-      {pendingEvolution && (
-        <div>
-          <h3>Neues Muster festlegen</h3>
-
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,40px)" }}>
-            {pattern.map((val, i) => (
-              <div key={i}
-                onClick={() => {
-                  const newP = [...pattern];
-                  newP[i] = !newP[i];
-                  setPattern(newP);
-                }}
-                style={{ width: 40, height: 40, background: val ? "black" : "#eee" }}
-              />
-            ))}
-          </div>
-
-          <button onClick={confirmEvolutionPattern}>Bestätigen</button>
-        </div>
-      )}
     </div>
   );
 }
