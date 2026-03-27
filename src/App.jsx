@@ -36,6 +36,8 @@ export default function App() {
   const [patternModal, setPatternModal] = useState(null);
 
   const [message, setMessage] = useState("");
+const [evoModal, setEvoModal] = useState(null);
+const [evoSearch, setEvoSearch] = useState("");
 
   useEffect(() => {
     fetch("https://pokeapi.co/api/v2/pokemon?limit=200")
@@ -46,6 +48,9 @@ export default function App() {
   const filtered = pokemonList.filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase())
   );
+const evoFiltered = pokemonList.filter(p =>
+  p.name.toLowerCase().includes(evoSearch.toLowerCase())
+);
 
   const getEVTiles = (stats) => {
     const ev = stats.reduce((sum, s) => sum + s.effort, 0);
@@ -256,48 +261,9 @@ export default function App() {
         </div>
 
         {/* 🔥 NEU: Entwicklung */}
-        <button onClick={async () => {
-  const evo = prompt("Entwicklung eingeben (z.B. wartortle):");
-  if (!evo) return;
-
-  try {
-    const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${evo.toLowerCase()}`);
-    if (!res.ok) {
-      alert("Pokemon nicht gefunden!");
-      return;
-    }
-
-    const data = await res.json();
-
-    setTeam(prevTeam => {
-      return prevTeam.map(t => {
-        if (t.id !== p.id) return t;
-
-        return {
-          ...t,
-          name: data.name,
-          sprite: data.sprites.front_default,
-          color: typeColors[data.types[0].type.name] || "gray"
-        };
-      });
-    });
-
-    setGrid(prevGrid => {
-      return prevGrid.map(c => {
-        if (c?.id !== p.id) return c;
-
-        return {
-          ...c,
-          name: data.name,
-          sprite: data.sprites.front_default,
-          color: typeColors[data.types[0].type.name] || "gray"
-        };
-      });
-    });
-
-  } catch (err) {
-    alert("Fehler bei Entwicklung");
-  }
+        <button onClick={() => {
+  setEvoModal(p);
+  setEvoSearch("");
 }}>
   ⬆️ Entwickeln
 </button>
@@ -436,6 +402,79 @@ export default function App() {
             }}
           />
         ))}
+{evoModal && (
+  <div style={{
+    position: "fixed",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    background: "rgba(0,0,0,0.5)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center"
+  }}>
+    <div style={{
+      background: "white",
+      padding: 20,
+      borderRadius: 10,
+      width: 300
+    }}>
+      <h3>Entwicklung wählen</h3>
+
+      <input
+        placeholder="Pokemon suchen..."
+        value={evoSearch}
+        onChange={(e) => setEvoSearch(e.target.value)}
+        style={{ width: "100%", marginBottom: 10 }}
+      />
+
+      <div style={{ maxHeight: 200, overflowY: "auto" }}>
+        {evoFiltered.slice(0, 10).map(p => {
+          const id = p.url.split("/").filter(Boolean).pop();
+          const icon = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-viii/icons/${id}.png`;
+
+          return (
+            <div
+              key={p.name}
+              style={{ cursor: "pointer", marginBottom: 5 }}
+              onClick={async () => {
+                try {
+                  const res = await fetch(p.url);
+                  const data = await res.json();
+
+                  const updated = {
+                    ...evoModal,
+                    name: data.name,
+                    sprite: data.sprites.front_default,
+                    color: typeColors[data.types[0].type.name] || "gray"
+                  };
+
+                  setTeam(prev =>
+                    prev.map(t => t.id === evoModal.id ? updated : t)
+                  );
+
+                  setGrid(prev =>
+                    prev.map(c => c?.id === evoModal.id ? updated : c)
+                  );
+
+                  setEvoModal(null);
+                } catch {
+                  alert("Fehler bei Entwicklung");
+                }
+              }}
+            >
+              <img src={icon} width={30} /> {p.name}
+            </div>
+          );
+        })}
+      </div>
+
+      <button onClick={() => setEvoModal(null)}>Abbrechen</button>
+    </div>
+  </div>
+)}
+
       </div>
 
       <button onClick={() => {
