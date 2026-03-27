@@ -282,6 +282,7 @@ export default function App() {
     ))}
   </div>
 </div>
+      </div>
 
       {/* BOX */}
       <h2>Box</h2>
