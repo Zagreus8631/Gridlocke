@@ -11,6 +11,14 @@ const typeColors = {
   normal: "#bdc3c7"
 };
 
+// 🔥 Helper für klickbare Texte
+const clickable = {
+  cursor: "pointer"
+};
+
+const addHover = (e) => e.target.style.textDecoration = "underline";
+const removeHover = (e) => e.target.style.textDecoration = "none";
+
 export default function App() {
   const [grid, setGrid] = useState(emptyGrid);
   const [team, setTeam] = useState([]);
@@ -47,7 +55,6 @@ export default function App() {
     p.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  // 🔥 EV → Anzahl Felder (vereinfacht)
   const getEVTiles = (stats) => {
     const ev = stats.reduce((sum, s) => sum + s.effort, 0);
     return Math.max(1, ev + 1);
@@ -170,8 +177,6 @@ export default function App() {
 
     pokemon.pattern[index] = false;
     setTeam([...team]);
-
-    // Grid aktualisieren
     setGrid([...grid]);
   };
 
@@ -240,12 +245,7 @@ export default function App() {
           <h2>Team</h2>
           {team.map(p => (
             <div key={p.id} style={{ display: "flex", gap: 10 }}>
-
-              <div
-                draggable
-                onDragStart={() => setSelected(p)}
-                style={{ cursor: "grab" }}
-              >
+              <div draggable onDragStart={() => setSelected(p)}>
                 <img src={p.sprite} width={40} />
                 <div>{p.nickname}</div>
               </div>
@@ -254,9 +254,7 @@ export default function App() {
                 {p.pattern.map((val, i) => (
                   <div
                     key={i}
-                    onClick={() =>
-                      eraseMode && eraseTile(p, i)
-                    }
+                    onClick={() => eraseMode && eraseTile(p, i)}
                     style={{
                       width: 15,
                       height: 15,
@@ -276,7 +274,14 @@ export default function App() {
       {box.map(p => (
         <div key={p.id}>
           {p.nickname}
-          <button onClick={() => setTeam([...team, p])}>To Team</button>
+          <span
+            style={clickable}
+            onMouseEnter={addHover}
+            onMouseLeave={removeHover}
+            onClick={() => setTeam([...team, p])}
+          >
+            {" "}→ To Team
+          </span>
         </div>
       ))}
 
@@ -292,18 +297,26 @@ export default function App() {
           {filtered.map(p => (
             <div
               key={p.name}
+              style={clickable}
+              onMouseEnter={addHover}
+              onMouseLeave={removeHover}
               onClick={() => setSelectedPokemon(p)}
-              style={{ cursor: "pointer" }}
             >
               {p.name}
             </div>
           ))}
 
-          <input
-            placeholder="Nickname"
-            value={nickname}
-            onChange={(e) => setNickname(e.target.value)}
-          />
+          {selectedPokemon && (
+            <div>
+              <b>{selectedPokemon.name}</b>
+
+              <input
+                placeholder="Nickname eingeben..."
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value)}
+              />
+            </div>
+          )}
 
           <button onClick={catchPokemon}>Weiter</button>
         </div>
@@ -319,7 +332,7 @@ export default function App() {
           padding: 20,
           border: "2px solid black"
         }}>
-          <h3>Muster wählen ({requiredTiles} Felder)</h3>
+          <h3>Muster wählen ({requiredTiles})</h3>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3,40px)" }}>
             {pattern.map((val, i) => (
