@@ -25,7 +25,7 @@ const addPoint = () => {
   setPoints(prev => Math.min(3, prev + 1));
 };
 
-  const [brush, setBrush] = useState(false);
+
   const [eraser, setEraser] = useState(false);
 
   const [showCatch, setShowCatch] = useState(false);
@@ -127,55 +127,73 @@ const evoFiltered = pokemonList.filter(p =>
   const handleGridClick = (index) => {
   const cell = grid[index];
 
-  // 🖌️ BRUSH
-  if (brush && cell) {
-    const pokemonInTeam = team.find(t => t.id === cell.id);
-
-    if (!pokemonInTeam || points <= 0) return;
-
-    if (pokemonInTeam.eraserDebt > 0) {
-      setMessage("Du musst erst Radierer verwenden!");
-      return;
-    }
-
-    setPoints(prev => prev - 1);
-
-    setTeam(prev =>
-      prev.map(t =>
-        t.id === cell.id
-          ? { ...t, color: "#000000" }
-          : t
-      )
-    );
-
-    return;
-  }
 
   // 🧽 ERASER
-  if (eraser && cell) {
-    const pokemonInTeam = team.find(t => t.id === cell.id);
+ if (eraser && cell) {
+  const pokemonInTeam = team.find(t => t.id === cell.id);
+  if (!pokemonInTeam || points <= 0) return;
 
-    if (!pokemonInTeam || points <= 0) return;
+  const gridIndices = grid
+    .map((c, i) => (c?.id === cell.id ? i : null))
+    .filter(v => v !== null);
 
-    const count = grid.filter(c => c?.id === cell.id).length;
-    if (count <= 1) return;
+  if (gridIndices.length <= 1) return;
 
-    setPoints(prev => prev - 1);
+  // 👉 berechne Offset im Pattern
+  const baseIndex = gridIndices[0];
+  const clickedOffset = index - baseIndex;
 
-    setTeam(prev =>
-      prev.map(t =>
-        t.id === cell.id
-          ? { ...t, eraserDebt: Math.max(0, (t.eraserDebt || 0) - 1) }
-          : t
-      )
-    );
+  // 👉 Pattern-Index finden
+  const newPattern = [...pokemonInTeam.pattern];
 
-    let newGrid = [...grid];
-    newGrid[index] = null;
-    setGrid(newGrid);
+  for (let i = 0; i < 9; i++) {
+    if (!pokemonInTeam.pattern[i]) continue;
 
-    return;
+    const r = Math.floor(i / 3);
+    const c = i % 3;
+
+    const br = Math.floor(baseIndex / 3);
+    const bc = baseIndex % 3;
+
+    const gr = br + (r - 1);
+    const gc = bc + (c - 1);
+
+    const gridPos = gr * 3 + gc;
+
+    if (gridPos === index) {
+      newPattern[i] = false;
+    }
   }
+
+  setPoints(prev => prev - 1);
+
+  // 🔥 Pattern im Team speichern
+  setTeam(prev =>
+    prev.map(t =>
+      t.id === cell.id
+        ? { ...t, pattern: newPattern }
+        : t
+    )
+  );
+
+  // 🔥 Grid neu aufbauen
+  const updatedPokemon = {
+    ...pokemonInTeam,
+    pattern: newPattern
+  };
+
+  let newGrid = [...grid];
+  newGrid = newGrid.map(c => (c?.id === cell.id ? null : c));
+
+  const offsets = getOffsets(newPattern);
+  offsets.forEach(o => {
+    const pos = getGridIndex(index, o);
+    if (pos !== null) newGrid[pos] = updatedPokemon;
+  });
+
+  setGrid(newGrid);
+  return;
+}
 
   // 📦 NORMAL CLICK
   if (cell) {
@@ -251,8 +269,14 @@ if (patternModal.evolvingId) {
 
     
 
-      <button onClick={() => setBrush(!brush)}>🖌️</button>
-      <button onClick={() => setEraser(!eraser)}>🧽</button>
+<button 
+  onClick={() => setEraser(prev => !prev)}
+  style={{
+    background: eraser ? "#ffaaaa" : "white"
+  }}
+>
+  🧽 {eraser ? "AN" : "AUS"}
+</button>
 
       {message && <p style={{ color: "red" }}>{message}</p>}
 
@@ -317,7 +341,10 @@ if (patternModal.evolvingId) {
         style={{ border: "1px solid #ccc", padding: 5 }}
       >
         <img src={p.sprite} width={40} />
-        <div>{p.nickname}</div>
+<div>
+  {p.nickname}
+  {p.pattern.filter(v => v).length < requiredTiles && " ✂️"}
+</div>
 
         {/* Muster Vorschau */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3,10px)" }}>
