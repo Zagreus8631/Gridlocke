@@ -126,26 +126,8 @@ const evoFiltered = pokemonList.filter(p =>
     const cell = grid[index];
 
 if (brush && cell) {
-  const pokemonInTeam = team.find(t => t.id === cell.id);
+  const pokemonInTeam = team.find(t => t.id === cell.id) || { eraserDebt: 0 };
   if (!pokemonInTeam || points <= 0) return;
-
-  if (pokemonInTeam.eraserDebt > 0) {
-    setMessage("Du musst erst Radierer verwenden!");
-    return;
-  }
-
-  setPoints(prev => prev - 1);
-
-  setTeam(prev =>
-    prev.map(t =>
-      t.id === cell.id
-        ? { ...t, color: "#000000" }
-        : t
-    )
-  );
-
-  return;
-}
 
 if (pokemonInTeam?.eraserDebt > 0) {
   setMessage("Du musst erst Radierer verwenden!");
@@ -163,9 +145,8 @@ if (pokemonInTeam?.eraserDebt > 0) {
   );
 
   return;
-}
     if (eraser && cell) {
-      const pokemonInTeam = team.find(t => t.id === cell.id);
+      const pokemonInTeam = team.find(t => t.id === cell.id) || { eraserDebt: 0 };
 
 if (!pokemonInTeam || points <= 0) return;
 
@@ -223,7 +204,7 @@ setTeam(prev =>
 const newPokemon = {
   id: Date.now(),
   name: p.name,
-  nickname: patternModal.nickname,
+  nickname: patternModal.nickname || p.name,
   sprite: p.sprites.front_default,
   pattern: [...pattern],
   color: typeColors[p.types[0].type.name] || "gray",
@@ -511,7 +492,7 @@ setSpeciesPatterns(prev => ({
         const newPokemon = {
           id: Date.now(),
           name: p.name,
-          nickname: patternModal.nickname,
+          nickname: patternModal.nickname || p.name,
           sprite: p.sprites.front_default,
           pattern: [...pattern],
           color: typeColors[p.types[0].type.name] || "gray",
