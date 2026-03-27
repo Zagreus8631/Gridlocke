@@ -30,7 +30,9 @@ export default function App() {
   const [globalDB, setGlobalDB] = useState({});
   const [pattern, setPattern] = useState("0");
 
-  // Load Pokémon list
+  const [points, setPoints] = useState(0);
+
+  // Load Pokémon
   useEffect(() => {
     fetch("https://pokeapi.co/api/v2/pokemon?limit=200")
       .then(res => res.json())
@@ -41,12 +43,26 @@ export default function App() {
     p.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  // Rule check
+  // FIXED GRID POSITIONING
+  const getPosition = (start, offset) => {
+    const row = Math.floor(start / 3);
+    const col = start % 3;
+
+    const oRow = Math.floor(offset / 3);
+    const oCol = offset % 3;
+
+    const newRow = row + oRow;
+    const newCol = col + oCol;
+
+    if (newRow > 2 || newCol > 2) return null;
+
+    return newRow * 3 + newCol;
+  };
+
   const isValidPlacement = (pattern, startIndex, pokemon) => {
     return pattern.every(p => {
-      const pos = startIndex + p;
-
-      if (pos >= 9) return false;
+      const pos = getPosition(startIndex, p);
+      if (pos === null) return false;
       if (grid[pos]) return false;
 
       const neighbors = [pos - 1, pos + 1, pos - 3, pos + 3];
@@ -62,14 +78,12 @@ export default function App() {
   const placeOnGrid = (index) => {
     if (!selected) return;
 
-    const pat = selected.pattern;
-
-    if (!isValidPlacement(pat, index, selected)) return;
+    if (!isValidPlacement(selected.pattern, index, selected)) return;
 
     const newGrid = [...grid];
 
-    pat.forEach(p => {
-      const pos = index + p;
+    selected.pattern.forEach(p => {
+      const pos = getPosition(index, p);
       newGrid[pos] = selected;
     });
 
@@ -83,7 +97,6 @@ export default function App() {
     setGrid(newGrid);
   };
 
-  // Catch Pokémon
   const catchPokemon = async () => {
     if (!selectedPokemon) return;
 
@@ -105,7 +118,7 @@ export default function App() {
     }
 
     const newPokemon = {
-      id: Date.now(),
+      id: Date.now() + Math.random(),
       name: data.name,
       nickname: data.name,
       sprite: data.sprites.front_default,
@@ -114,9 +127,8 @@ export default function App() {
 
     setBox(prev => [...prev, newPokemon]);
 
-    setShowCatch(false);
-    setSearch("");
     setSelectedPokemon(null);
+    setSearch("");
   };
 
   const moveToTeam = (p) => {
@@ -125,60 +137,78 @@ export default function App() {
     setBox(prev => prev.filter(x => x.id !== p.id));
   };
 
+  const addPoint = () => {
+    if (points < 3) setPoints(points + 1);
+  };
+
   return (
     <div style={{ padding: 20 }}>
       <h1>Pokemon Grid</h1>
 
-      {/* GRID */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, 80px)",
-          gap: 5
-        }}
-      >
-        {grid.map((cell, i) => (
+      <p>Punkte: {points}</p>
+      <button onClick={addPoint}>+ Punkt</button>
+
+      <div style={{ display: "flex", gap: 40 }}>
+        
+        {/* GRID */}
+        <div>
+          <h2>Grid</h2>
           <div
-            key={i}
-            onClick={() => cell && removePokemon(cell.id)}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={() => placeOnGrid(i)}
             style={{
-              width: 80,
-              height: 80,
-              border: "1px solid black",
-              background: cell ? cell.color : "white",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center"
+              display: "grid",
+              gridTemplateColumns: "repeat(3, 80px)",
+              gap: 5
             }}
           >
-            {cell && <img src={cell.sprite} width={50} />}
+            {grid.map((cell, i) => (
+              <div
+                key={i}
+                onClick={() => cell && removePokemon(cell.id)}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => placeOnGrid(i)}
+                style={{
+                  width: 80,
+                  height: 80,
+                  border: "1px solid black",
+                  background: cell ? cell.color : "white",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}
+              >
+                {cell && <img src={cell.sprite} width={50} />}
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-
-      {/* TEAM */}
-      <h2>Team</h2>
-      {team.map(p => (
-        <div
-          key={p.id}
-          draggable
-          onDragStart={() => setSelected(p)}
-        >
-          <img src={p.sprite} width={40} />
-
-          <input
-            value={p.nickname}
-            onChange={(e) => {
-              const newTeam = team.map(x =>
-                x.id === p.id ? { ...x, nickname: e.target.value } : x
-              );
-              setTeam(newTeam);
-            }}
-          />
         </div>
-      ))}
+
+        {/* TEAM RIGHT SIDE */}
+        <div>
+          <h2>Team</h2>
+          {team.map(p => (
+            <div
+              key={p.id}
+              draggable
+              onDragStart={() => setSelected(p)}
+              style={{ marginBottom: 10 }}
+            >
+              <img src={p.sprite} width={40} />
+
+              <input
+                value={p.nickname}
+                onChange={(e) => {
+                  const newTeam = team.map(x =>
+                    x.id === p.id
+                      ? { ...x, nickname: e.target.value }
+                      : x
+                  );
+                  setTeam(newTeam);
+                }}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* BOX */}
       <h2>Box</h2>
@@ -190,12 +220,11 @@ export default function App() {
         </div>
       ))}
 
-      {/* Catch Button */}
+      {/* Catch */}
       <button onClick={() => setShowCatch(true)}>
         Catch Pokemon
       </button>
 
-      {/* Modal */}
       {showCatch && (
         <div style={{ border: "2px solid black", padding: 10 }}>
           <input
@@ -214,7 +243,7 @@ export default function App() {
             <>
               <p>{selectedPokemon.name}</p>
               <input
-                placeholder="Pattern z.B. 0,1,2"
+                placeholder="Pattern (z.B. 0,1,3)"
                 value={pattern}
                 onChange={(e) => setPattern(e.target.value)}
               />
