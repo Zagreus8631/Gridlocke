@@ -158,16 +158,15 @@ setTeam(prev =>
 
     const p = patternModal.data;
 
-    const newPokemon = {
+const newPokemon = {
   id: patternModal.evolvingId || Date.now(),
-eraserUsed: patternModal.eraserUsed || 0
-      name: p.name,
-      nickname,
-      sprite: p.sprites.front_default,
-      pattern,
-      color: typeColors[p.types[0].type.name] || "gray",
-eraserUsed: 0
-    };
+  name: p.name,
+  nickname,
+  sprite: p.sprites.front_default,
+  pattern,
+  color: typeColors[p.types[0].type.name] || "gray",
+  eraserUsed: patternModal.eraserUsed || 0
+};
 
     if (patternModal.evolvingId) {
   setTeam(prev => [...prev, newPokemon]);
@@ -440,7 +439,11 @@ setEvoSearch("");
 eraserUsed: patternModal.eraserUsed || 0
         };
 
-        setBox([...box, newPokemon]);
+        if (patternModal.evolvingId) {
+  setTeam(prev => [...prev, newPokemon]);
+} else {
+  setBox([...box, newPokemon]);
+}
 
         // Reset
         setPattern(Array(9).fill(false));
@@ -521,15 +524,7 @@ setTeam(prev => prev.filter(t => t.id !== evoModal.id));
 // 7. Evo Modal schließen
 setEvoModal(null);
 
-                  setTeam(prev =>
-                    prev.map(t => t.id === evoModal.id ? updated : t)
-                  );
-
-                  setGrid(prev =>
-                    prev.map(c => c?.id === evoModal.id ? updated : c)
-                  );
-
-                  setEvoModal(null);
+                  
                 } catch {
                   alert("Fehler bei Entwicklung");
                 }
