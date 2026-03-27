@@ -256,17 +256,51 @@ export default function App() {
         </div>
 
         {/* 🔥 NEU: Entwicklung */}
-        <button onClick={() => {
-          const evo = prompt("Neue Entwicklung eingeben:");
-          if (!evo) return;
+        <button onClick={async () => {
+  const evo = prompt("Entwicklung eingeben (z.B. wartortle):");
+  if (!evo) return;
 
-          const updated = { ...p, name: evo };
+  try {
+    const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${evo.toLowerCase()}`);
+    if (!res.ok) {
+      alert("Pokemon nicht gefunden!");
+      return;
+    }
 
-          setTeam(team.map(t => t.id === p.id ? updated : t));
-          setGrid(grid.map(c => c?.id === p.id ? updated : c));
-        }}>
-          ⬆️ Entwickeln
-        </button>
+    const data = await res.json();
+
+    setTeam(prevTeam => {
+      return prevTeam.map(t => {
+        if (t.id !== p.id) return t;
+
+        return {
+          ...t,
+          name: data.name,
+          sprite: data.sprites.front_default,
+          color: typeColors[data.types[0].type.name] || "gray"
+        };
+      });
+    });
+
+    setGrid(prevGrid => {
+      return prevGrid.map(c => {
+        if (c?.id !== p.id) return c;
+
+        return {
+          ...c,
+          name: data.name,
+          sprite: data.sprites.front_default,
+          color: typeColors[data.types[0].type.name] || "gray"
+        };
+      });
+    });
+
+  } catch (err) {
+    alert("Fehler bei Entwicklung");
+  }
+}}>
+  ⬆️ Entwickeln
+</button>
 
         <button onClick={() => {
           setBox([...box, p]);
