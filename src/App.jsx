@@ -126,12 +126,20 @@ const evoFiltered = pokemonList.filter(p =>
     const cell = grid[index];
 
     if (eraser && cell) {
-      if (points <= 0) return;
+      const pokemonInTeam = team.find(t => t.id === cell.id);
+
+if (!pokemonInTeam || (pokemonInTeam.eraserUsed || 0) <= 0) return;
 
       const count = grid.filter(c => c?.id === cell.id).length;
       if (count <= 1) return;
 
-      setPoints(p => p - 1);
+      setTeam(prev =>
+  prev.map(t =>
+    t.id === cell.id
+      ? { ...t, eraserUsed: t.eraserUsed - 1 }
+      : t
+  )
+);
 
 setTeam(prev =>
   prev.map(t =>
@@ -188,7 +196,10 @@ const newPokemon = {
 };
 setSpeciesPatterns(prev => ({
   ...prev,
-  [p.name]: pattern
+  setSpeciesPatterns(prev => ({
+  ...prev,
+  [p.name]: [...pattern]   // 🔥 WICHTIG: Kopie!
+}));
 }));
 
     if (patternModal.evolvingId) {
@@ -536,8 +547,7 @@ setGrid(prev => prev.map(c => c?.id === evoModal.id ? null : c));
 // 2. neue requiredTiles berechnen
 const newRequired = getEVTiles(data.stats);
 
-// 3. Punkte zurückgeben (Radiergummi-Bonus)
-setPoints(p => p + (evoModal.eraserUsed || 0));
+
 
 const savedPattern = speciesPatterns[data.name];
 
