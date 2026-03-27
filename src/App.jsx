@@ -403,6 +403,41 @@ setEvoSearch("");
             }}
           />
         ))}
+
+      </div>
+
+      <button onClick={() => {
+        const count = pattern.filter(v => v).length;
+
+        if (count !== requiredTiles) {
+          alert(`Du musst genau ${requiredTiles} Felder wählen!`);
+          return;
+        }
+
+        const p = patternModal.data;
+
+        const newPokemon = {
+          id: Date.now(),
+          name: p.name,
+          nickname: patternModal.nickname,
+          sprite: p.sprites.front_default,
+          pattern,
+          color: typeColors[p.types[0].type.name] || "gray"
+        };
+
+        setBox([...box, newPokemon]);
+
+        // Reset
+        setPattern(Array(9).fill(false));
+        setPatternModal(null);
+        setSelectedPokemon(null);
+        setNickname("");
+      }}>
+        Bestätigen
+      </button>
+    </div>
+  </div>
+)}
 {evoModal && (
   <div style={{
     position: "fixed",
@@ -476,40 +511,6 @@ setEvoSearch("");
   </div>
 )}
 
-      </div>
-
-      <button onClick={() => {
-        const count = pattern.filter(v => v).length;
-
-        if (count !== requiredTiles) {
-          alert(`Du musst genau ${requiredTiles} Felder wählen!`);
-          return;
-        }
-
-        const p = patternModal.data;
-
-        const newPokemon = {
-          id: Date.now(),
-          name: p.name,
-          nickname: patternModal.nickname,
-          sprite: p.sprites.front_default,
-          pattern,
-          color: typeColors[p.types[0].type.name] || "gray"
-        };
-
-        setBox([...box, newPokemon]);
-
-        // Reset
-        setPattern(Array(9).fill(false));
-        setPatternModal(null);
-        setSelectedPokemon(null);
-        setNickname("");
-      }}>
-        Bestätigen
-      </button>
-    </div>
-  </div>
-)}
     </div>
   );
 }
