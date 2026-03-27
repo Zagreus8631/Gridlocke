@@ -258,7 +258,9 @@ export default function App() {
             onClick={() => {
               if (team.find(t => t.id === p.id)) return;
               if (team.length >= 6) return;
+
               setTeam([...team, p]);
+              setBox(box.filter(b => b.id !== p.id)); // 🔥 FIX
             }}
           >
             → To Team
@@ -275,47 +277,53 @@ export default function App() {
         <div>
           <input value={search} onChange={(e) => setSearch(e.target.value)} />
 
-          {filtered.slice(0, 10).map(p => (
-            <div
-              key={p.name}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                padding: "5px 0"
-              }}
-            >
-              <span
+          {filtered.slice(0, 10).map((p, index) => {
+            const id = index + 1;
+            const sprite = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
+
+            return (
+              <div
+                key={p.name}
                 style={{
-                  cursor: "pointer",
-                  fontWeight: selectedPokemon?.name === p.name ? "bold" : "normal"
-                }}
-                onMouseEnter={addHover}
-                onMouseLeave={removeHover}
-                onClick={() => {
-                  setSelectedPokemon(p);
-                  setNickname("");
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "5px 0"
                 }}
               >
-                {p.name}
-              </span>
+                <span
+                  style={{
+                    cursor: "pointer",
+                    fontWeight: selectedPokemon?.name === p.name ? "bold" : "normal",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8
+                  }}
+                  onMouseEnter={addHover}
+                  onMouseLeave={removeHover}
+                  onClick={() => {
+                    setSelectedPokemon(p);
+                    setNickname("");
+                  }}
+                >
+                  <img src={sprite} width={30} />
+                  {p.name}
+                </span>
 
-              {selectedPokemon?.name === p.name && (
-                <>
-                  <input
-                    style={{ width: "150px" }}
-                    placeholder="Nickname..."
-                    value={nickname}
-                    onChange={(e) => setNickname(e.target.value)}
-                  />
-
-                  <button onClick={catchPokemon}>
-                    Weiter
-                  </button>
-                </>
-              )}
-            </div>
-          ))}
+                {selectedPokemon?.name === p.name && (
+                  <>
+                    <input
+                      style={{ width: "150px" }}
+                      placeholder="Nickname..."
+                      value={nickname}
+                      onChange={(e) => setNickname(e.target.value)}
+                    />
+                    <button onClick={catchPokemon}>Weiter</button>
+                  </>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
