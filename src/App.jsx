@@ -302,6 +302,53 @@ export default function App() {
 
       {/* GRAVEYARD */}
       <h2>Graveyard</h2>
+{/* CATCH */}
+<button onClick={() => setShowCatch(!showCatch)}>
+  Catch Pokemon
+</button>
+
+{showCatch && (
+  <div>
+    <input
+      value={search}
+      onChange={(e) => setSearch(e.target.value)}
+      placeholder="Pokemon suchen..."
+    />
+
+    {filtered.slice(0, 10).map(p => {
+      const id = p.url.split("/").filter(Boolean).pop();
+      const icon = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-viii/icons/${id}.png`;
+
+      return (
+        <div key={p.name}>
+          <span
+            style={{
+              fontWeight: selectedPokemon?.name === p.name ? "bold" : "normal",
+              cursor: "pointer"
+            }}
+            onClick={() => {
+              setSelectedPokemon(p);
+              setNickname("");
+            }}
+          >
+            <img src={icon} width={30} /> {p.name}
+          </span>
+
+          {selectedPokemon?.name === p.name && (
+            <>
+              <input
+                placeholder="Nickname"
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value)}
+              />
+              <button onClick={catchPokemon}>Weiter</button>
+            </>
+          )}
+        </div>
+      );
+    })}
+  </div>
+)}
       {graveyard.map(p => (
         <div key={p.id}>{p.nickname}</div>
       ))}
