@@ -99,7 +99,15 @@ const evoFiltered = pokemonList.filter(p =>
   if (!pokemon) return;
 
   // 🔥 NEU: immer aktuelles Pokémon aus Team holen
-  const current = team.find(t => t.id === pokemon.id) || pokemon;
+const current = team.find(t => t.id === pokemon.id) || pokemon;
+
+// 🔥 FIX: Types immer sicherstellen
+if (!current.types) {
+  const foundType = Object.keys(typeColors).find(
+    key => typeColors[key] === current.color
+  );
+  current.types = foundType ? [foundType] : [];
+}
 
   let newGrid = [...grid];
   newGrid = newGrid.map(c => (c?.id === current.id ? null : c));
@@ -122,11 +130,24 @@ const evoFiltered = pokemonList.filter(p =>
   for (let n of neighbors) {
     if (
   n >= 0 && n < 9 &&
-  newGrid[n] &&
-  newGrid[n].types &&
-  current.types &&
-  newGrid[n].types.some(t => current.types.includes(t))
-)
+  newGrid[n]
+) {
+  const neighbor = newGrid[n];
+
+  if (!neighbor.types) {
+    const foundType = Object.keys(typeColors).find(
+      key => typeColors[key] === neighbor.color
+    );
+    neighbor.types = foundType ? [foundType] : [];
+  }
+
+  if (
+    neighbor.types.some(t => current.types.includes(t))
+  ) {
+    setMessage("Gleiche Typen dürfen nicht angrenzen!");
+    return;
+  }
+}
  {
       setMessage("Gleiche Farbe darf nicht angrenzen!");
       return;
