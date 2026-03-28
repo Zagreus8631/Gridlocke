@@ -130,7 +130,8 @@ if (!current.types) {
   for (let n of neighbors) {
     if (
   n >= 0 && n < 9 &&
-  newGrid[n]
+  newGrid[n] &&
+  Math.abs((n % 3) - (pos % 3)) <= 1
 ) {
   const neighbor = newGrid[n];
 
@@ -149,7 +150,7 @@ if (!current.types) {
   }
 }
  {
-      setMessage("Gleiche Farbe darf nicht angrenzen!");
+      setMessage("Gleiche Typen dürfen nicht angrenzen!");
       return;
     }
   }
