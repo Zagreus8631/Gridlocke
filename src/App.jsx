@@ -199,10 +199,13 @@ const evoFiltered = pokemonList.filter(p =>
 }
 
   // 📦 NORMAL CLICK
-  if (cell) {
-    setDragging(cell);
-    setSelected(cell);
-  } else if (dragging) {
+if (cell) {
+  const current = team.find(t => t.id === cell.id) || cell;
+  setDragging(current);
+  setSelected(current);
+}
+
+else if (dragging) {
     placeOnGrid(index, dragging);
     setDragging(null);
   }
@@ -338,7 +341,7 @@ if (patternModal.evolvingId) {
   }}>
     {team.map(p => (
       <div key={p.id} draggable onDragStart={() => {
-  setDragging(p);
+  setDragging(team.find(t => t.id === p.id) || p);
   setSelected(p);
 }}
         style={{ border: "1px solid #ccc", padding: 5 }}
@@ -373,7 +376,8 @@ setEvoSearch("");
 </button>
 
         <button onClick={() => {
-          setBox([...box, p]);
+          const current = team.find(t => t.id === p.id) || p; 
+setBox([...box, current]);
           setTeam(team.filter(t => t.id !== p.id));
           setGrid(grid.map(c => (c?.id === p.id ? null : c)));
         }}>
@@ -416,7 +420,8 @@ setEvoSearch("");
     <img src={p.sprite} width={40} />
 {p.nickname}
     <button onClick={() => {
-      setBox([...box, p]);
+      const current = team.find(t => t.id === p.id) || p; 
+setBox([...box, current]);
       setGraveyard(graveyard.filter(g => g.id !== p.id));
     }}>
       → Box
