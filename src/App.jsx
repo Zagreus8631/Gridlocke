@@ -3,11 +3,24 @@ import { useState, useEffect } from "react";
 const emptyGrid = Array(9).fill(null);
 
 const typeColors = {
-  fire: "#e74c3c",
-  water: "#3498db",
-  grass: "#2ecc71",
-  electric: "#f1c40f",
-  normal: "#bdc3c7"
+  normal: "#A8A77A",
+  fire: "#EE8130",
+  water: "#6390F0",
+  electric: "#F7D02C",
+  grass: "#7AC74C",
+  ice: "#96D9D6",
+  fighting: "#C22E28",
+  poison: "#A33EA1",
+  ground: "#E2BF65",
+  flying: "#A98FF3",
+  psychic: "#F95587",
+  bug: "#A6B91A",
+  rock: "#B6A136",
+  ghost: "#735797",
+  dragon: "#6F35FC",
+  dark: "#705746",
+  steel: "#B7B7CE",
+  fairy: "#D685AD"
 };
 
 export default function App() {
@@ -110,7 +123,7 @@ const evoFiltered = pokemonList.filter(p =>
     if (
       n >= 0 && n < 9 &&
       newGrid[n] &&
-      newGrid[n].color === pokemon.color
+newGrid[n].types?.some(t => current.types?.includes(t))
     ) {
       setMessage("Gleiche Farbe darf nicht angrenzen!");
       return;
@@ -232,7 +245,10 @@ const newPokemon = {
   nickname: patternModal.nickname || p.name,
   sprite: p.sprites.front_default,
   pattern: [...pattern],
-  color: typeColors[p.types[0].type.name] || "gray",
+color: p.types.length > 1
+  ? `linear-gradient(45deg, ${typeColors[p.types[0].type.name]}, ${typeColors[p.types[1].type.name]})`
+  : typeColors[p.types[0].type.name] || "gray",
+types: p.types.map(t => t.type.name),
   eraserDebt: patternModal.eraserDebt || 0
 };
 
@@ -619,7 +635,10 @@ if (savedPattern) {
     nickname: evoModal.nickname || evoModal.name,
     sprite: data.sprites.front_default,
     pattern: [...savedPattern],
-    color: typeColors[data.types[0].type.name] || "gray",
+color: data.types.length > 1
+  ? `linear-gradient(45deg, ${typeColors[data.types[0].type.name]}, ${typeColors[data.types[1].type.name]})`
+  : typeColors[data.types[0].type.name] || "gray",
+types: data.types.map(t => t.type.name),
     eraserDebt: evoModal.eraserDebt || 0
   };
 
