@@ -121,10 +121,13 @@ const evoFiltered = pokemonList.filter(p =>
 
   for (let n of neighbors) {
     if (
-      n >= 0 && n < 9 &&
-      newGrid[n] &&
-newGrid[n].types?.some(t => current.types?.includes(t))
-    ) {
+  n >= 0 && n < 9 &&
+  newGrid[n] &&
+  newGrid[n].types &&
+  current.types &&
+  newGrid[n].types.some(t => current.types.includes(t))
+)
+ {
       setMessage("Gleiche Farbe darf nicht angrenzen!");
       return;
     }
@@ -326,11 +329,14 @@ if (patternModal.evolvingId) {
                     width: 80,
                     height: 80,
                     border: "1px solid black",
-                    background: previewCells.includes(i)
-                      ? "rgba(0,0,0,0.3)"
-                      : cell
-                      ? cell.color
-                      : "white"
+                   background: previewCells.includes(i)
+  ? "rgba(0,0,0,0.3)"
+  : cell && !cell.color?.startsWith("linear-gradient")
+  ? cell.color
+  : "white",
+backgroundImage: cell?.color?.startsWith("linear-gradient")
+  ? cell.color
+  : "none"
                   }}
                 >
                   {cell && <img src={cell.sprite} width={40} />}
@@ -630,17 +636,17 @@ const savedPattern = speciesPatterns[data.name];
 
 if (savedPattern) {
   const newPokemon = {
-    id: Date.now(),
-    name: data.name,
-    nickname: evoModal.nickname || evoModal.name,
-    sprite: data.sprites.front_default,
-    pattern: [...savedPattern],
-color: data.types.length > 1
-  ? `linear-gradient(45deg, ${typeColors[data.types[0].type.name]}, ${typeColors[data.types[1].type.name]})`
-  : typeColors[data.types[0].type.name] || "gray",
-types: data.types.map(t => t.type.name),
-    eraserDebt: evoModal.eraserDebt || 0
-  };
+  id: Date.now(),
+  name: data.name,
+  nickname: evoModal.nickname || evoModal.name,
+  sprite: data.sprites.front_default,
+  pattern: [...savedPattern],
+  color: data.types.length > 1
+    ? `linear-gradient(45deg, ${typeColors[data.types[0].type.name]}, ${typeColors[data.types[1].type.name]})`
+    : typeColors[data.types[0].type.name] || "gray",
+  types: data.types.map(t => t.type.name),
+  eraserDebt: evoModal.eraserDebt || 0
+};
 
   setTeam(prev => [...prev, newPokemon]);
   setPatternModal(null);
