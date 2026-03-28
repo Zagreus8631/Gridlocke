@@ -1,4 +1,4 @@
-// FIXED VERSION (nur die genannten Punkte angepasst)
+// FULL FIXED VERSION – nichts entfernt, nur Bugs gefixt
 import { useState, useEffect } from "react";
 
 const emptyGrid = Array(9).fill(null);
@@ -104,10 +104,7 @@ export default function App() {
       const neighbors = [pos - 1, pos + 1, pos - 3, pos + 3];
 
       for (let n of neighbors) {
-        if (
-          n >= 0 && n < 9 &&
-          newGrid[n]
-        ) {
+        if (n >= 0 && n < 9 && newGrid[n]) {
           const neighborPokemon = team.find(t => t.id === newGrid[n]);
           if (neighborPokemon?.color === current.color) {
             setMessage("Gleiche Farbe darf nicht angrenzen!");
@@ -214,6 +211,14 @@ export default function App() {
             <div
               key={i}
               onClick={() => handleGridClick(i)}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setHoverIndex(i);
+              }}
+              onDrop={() => {
+                placeOnGrid(i, dragging);
+                setDragging(null);
+              }}
               style={{
                 width: 80,
                 height: 80,
