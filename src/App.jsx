@@ -187,22 +187,9 @@ for (let i = 0; i < 9; i++) {
   );
 
   // 🔥 Grid neu aufbauen
-  const updatedPokemon = {
-    ...pokemonInTeam,
-    pattern: newPattern
-  };
-
-  let newGrid = [...grid];
-  newGrid = newGrid.map(c => (c?.id === cell.id ? null : c));
-
-const offsets = getOffsets(newPattern);
-offsets.forEach(o => {
-  const pos = getGridIndex(baseIndex, o);
-    if (pos !== null) newGrid[pos] = updatedPokemon;
-  });
-
-  setGrid(newGrid);
-  return;
+// 🔥 Pokemon einfach aus dem Grid entfernen
+setGrid(prev => prev.map(c => (c?.id === cell.id ? null : c)));
+return;
 }
 
   // 📦 NORMAL CLICK
