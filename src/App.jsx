@@ -17,14 +17,11 @@ export default function App() {
   const [graveyard, setGraveyard] = useState([]);
 
   const [pokemonList, setPokemonList] = useState([]);
-const [points, setPoints] = useState(3);
+  const [points, setPoints] = useState(3);
+
   const [selected, setSelected] = useState(null);
   const [dragging, setDragging] = useState(null);
   const [hoverIndex, setHoverIndex] = useState(null);
-const addPoint = () => {
-  setPoints(prev => Math.min(3, prev + 1));
-};
-
 
   const [eraser, setEraser] = useState(false);
 
@@ -38,10 +35,11 @@ const addPoint = () => {
   const [patternModal, setPatternModal] = useState(null);
 
   const [message, setMessage] = useState("");
-const [evoModal, setEvoModal] = useState(null);
-const [evoSearch, setEvoSearch] = useState("");
 
-const [speciesPatterns, setSpeciesPatterns] = useState({});
+  const [evoModal, setEvoModal] = useState(null);
+  const [evoSearch, setEvoSearch] = useState("");
+
+  const [speciesPatterns, setSpeciesPatterns] = useState({});
 
   useEffect(() => {
     fetch("https://pokeapi.co/api/v2/pokemon?limit=200")
@@ -52,9 +50,10 @@ const [speciesPatterns, setSpeciesPatterns] = useState({});
   const filtered = pokemonList.filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase())
   );
-const evoFiltered = pokemonList.filter(p =>
-  p.name.toLowerCase().includes(evoSearch.toLowerCase())
-);
+
+  const evoFiltered = pokemonList.filter(p =>
+    p.name.toLowerCase().includes(evoSearch.toLowerCase())
+  );
 
   const getEVTiles = (stats) => {
     const ev = stats.reduce((sum, s) => sum + s.effort, 0);
@@ -83,129 +82,115 @@ const evoFiltered = pokemonList.filter(p =>
   };
 
   const placeOnGrid = (index, pokemon) => {
-  if (!pokemon) return;
+    if (!pokemon) return;
 
-  const current = team.find(t => t.id === pokemon.id) || pokemon;
+    const current = team.find(t => t.id === pokemon.id) || pokemon;
 
-  let newGrid = [...grid];
-  newGrid = newGrid.map(c => (c === current.id ? null : c)); // ✅ FIX
+    let newGrid = [...grid];
+    newGrid = newGrid.map(c => (c === current.id ? null : c));
 
-  const offsets = getOffsets(current.pattern);
+    const offsets = getOffsets(current.pattern);
 
     for (let o of offsets) {
-  const pos = getGridIndex(index, o);
-  if (pos === null || newGrid[pos]) {
-    setMessage("Ungültige Position");
-    return;
-  }
+      const pos = getGridIndex(index, o);
+      if (pos === null || newGrid[pos]) return;
 
-  const neighbors = [
-    pos - 1, pos + 1,
-    pos - 3, pos + 3
-  ];
+      const neighbors = [pos - 1, pos + 1, pos - 3, pos + 3];
 
-  for (let n of neighbors) {
-    if (
-      n >= 0 && n < 9 &&
-      newGrid[n] &&
-      team.find(t => t.id === newGrid[n])?.color === current.color // ✅ FIX
-    ) {
-      setMessage("Gleiche Farbe darf nicht angrenzen!");
-      return;
+      for (let n of neighbors) {
+        if (
+          n >= 0 &&
+          n < 9 &&
+          newGrid[n] &&
+          team.find(t => t.id === newGrid[n])?.color === current.color
+        ) {
+          return;
+        }
+      }
     }
-  }
-}
 
     offsets.forEach(o => {
       const pos = getGridIndex(index, o);
-      newGrid[pos] = current.id; // ✅ FIX
+      newGrid[pos] = current.id;
     });
 
     setGrid(newGrid);
-    setMessage("");
   };
 
   const handleGridClick = (index) => {
-  const cellId = grid[index];
-  const cell = team.find(t => t.id === cellId); // ✅ FIX
+    const cellId = grid[index];
+    const cell = team.find(t => t.id === cellId);
 
+    if (eraser && cell) {
+      if (points <= 0) return;
 
- if (eraser && cell) {
-  const pokemonInTeam = team.find(t => t.id === cell.id);
-  if (!pokemonInTeam || points <= 0) return;
+      const gridIndices = grid
+        .map((c, i) => (c === cell.id ? i : null))
+        .filter(v => v !== null);
 
-  const gridIndices = grid
-    .map((c, i) => (c === cell.id ? i : null)) // ✅ FIX
-    .filter(v => v !== null);
+      if (gridIndices.length <= 1) return;
 
-  if (gridIndices.length <= 1) return;
+      const newPattern = [...cell.pattern];
 
-  const newPattern = [...pokemonInTeam.pattern];
-
-  let count = 0;
-  for (let i = 0; i < 9; i++) {
-    if (pokemonInTeam.pattern[i]) {
-      if (gridIndices[count] === index) {
-        newPattern[i] = false;
-        break;
+      let count = 0;
+      for (let i = 0; i < 9; i++) {
+        if (cell.pattern[i]) {
+          if (gridIndices[count] === index) {
+            newPattern[i] = false;
+            break;
+          }
+          count++;
+        }
       }
-      count++;
+
+      setPoints(p => p - 1);
+
+      setTeam(prev =>
+        prev.map(t =>
+          t.id === cell.id ? { ...t, pattern: newPattern } : t
+        )
+      );
+
+      let newGrid = [...grid];
+      newGrid = newGrid.map(c => (c === cell.id ? null : c));
+
+      const offsets = getOffsets(newPattern);
+      offsets.forEach(o => {
+        const pos = getGridIndex(index, o);
+        if (pos !== null) newGrid[pos] = cell.id;
+      });
+
+      setGrid(newGrid);
+      return;
     }
-  }
 
-  setPoints(prev => prev - 1);
-
-  setTeam(prev =>
-    prev.map(t =>
-      t.id === cell.id
-        ? { ...t, pattern: newPattern }
-        : t
-    )
-  );
-
-  let newGrid = [...grid];
-  newGrid = newGrid.map(c => (c === cell.id ? null : c)); // ✅ FIX
-
-  const offsets = getOffsets(newPattern);
-  offsets.forEach(o => {
-    const pos = getGridIndex(index, o);
-    if (pos !== null) newGrid[pos] = cell.id; // ✅ FIX
-  });
-
-  setGrid(newGrid);
-  return;
-}
-
-if (cell) {
-  const current = team.find(t => t.id === cell.id) || cell;
-  setDragging(current);
-  setSelected(current);
-}
-
-else if (dragging) {
-    placeOnGrid(index, dragging);
-    setDragging(null);
-  }
-};
+    if (cell) {
+      setDragging(cell);
+      setSelected(cell);
+    } else if (dragging) {
+      placeOnGrid(index, dragging);
+      setDragging(null);
+    }
+  };
 
   return (
     <div style={{ padding: 20 }}>
       <h1>Pokemon Grid</h1>
+
+      <div>
+        ⭐ Punkte: {points}
+      </div>
+
+      <button onClick={() => setEraser(e => !e)}>
+        🧽 {eraser ? "AN" : "AUS"}
+      </button>
 
       <div style={{ display: "flex", gap: 40 }}>
         <div>
           <h2>Grid</h2>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3,80px)" }}>
             {grid.map((cell, i) => {
-              const pokemon = team.find(t => t.id === cell); // ✅ FIX
-
-              let previewCells = [];
-
-              if (hoverIndex !== null && dragging) {
-                previewCells = getOffsets(dragging.pattern)
-                  .map(o => getGridIndex(hoverIndex, o))
-                  .filter(v => v !== null);
-              }
+              const pokemon = team.find(t => t.id === cell);
 
               return (
                 <div
@@ -223,14 +208,10 @@ else if (dragging) {
                     width: 80,
                     height: 80,
                     border: "1px solid black",
-                    background: previewCells.includes(i)
-                      ? "rgba(0,0,0,0.3)"
-                      : pokemon
-                      ? pokemon.color
-                      : "white"
+                    background: pokemon ? pokemon.color : "white"
                   }}
                 >
-                  {pokemon && <img src={pokemon.sprite} width={40} />} {/* ✅ FIX */}
+                  {pokemon && <img src={pokemon.sprite} width={40} />}
                 </div>
               );
             })}
