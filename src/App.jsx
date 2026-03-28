@@ -28,6 +28,7 @@ export default function App() {
   const [team, setTeam] = useState([]);
   const [box, setBox] = useState([]);
   const [graveyard, setGraveyard] = useState([]);
+const [saveSlot, setSaveSlot] = useState("slot1");
 
   const [pokemonList, setPokemonList] = useState([]);
 const [points, setPoints] = useState(3);
@@ -55,11 +56,39 @@ const [evoModal, setEvoModal] = useState(null);
 const [evoSearch, setEvoSearch] = useState("");
 
 const [speciesPatterns, setSpeciesPatterns] = useState({});
+useEffect(() => {
+  const save = {
+    grid,
+    team,
+    box,
+    graveyard,
+    speciesPatterns,
+    points
+  };
+
+  localStorage.setItem(`pokemon-save-${saveSlot}`, JSON.stringify(save));
+}, [grid, team, box, graveyard, speciesPatterns, points]);
 
   useEffect(() => {
-    fetch("https://pokeapi.co/api/v2/pokemon?limit=200")
-      .then(res => res.json())
-      .then(data => setPokemonList(data.results));
+  const save = localStorage.getItem(`pokemon-save-${saveSlot}`);
+  if (!save) return;
+
+  try {
+    const data = JSON.parse(save);
+
+    setGrid(data.grid || emptyGrid);
+    setTeam(data.team || []);
+    setBox(data.box || []);
+    setGraveyard(data.graveyard || []);
+    setSpeciesPatterns(data.speciesPatterns || {});
+    setPoints(data.points ?? 3);
+  } catch {}
+}, [saveSlot]);
+   useEffect(() => {
+  fetch("https://pokeapi.co/api/v2/pokemon?limit=1000")
+    .then(res => res.json())
+    .then(data => setPokemonList(data.results));
+}, []);
   }, []);
 
   const filtered = pokemonList.filter(p =>
@@ -149,10 +178,7 @@ if (!current.types) {
     return;
   }
 }
- {
-      setMessage("Gleiche Typen dürfen nicht angrenzen!");
-      return;
-    }
+ 
   }
 }
 
@@ -251,8 +277,21 @@ else if (dragging) {
   const res = await fetch(selectedPokemon.url);
   const data = await res.json();
 
+const savedPattern = speciesPatterns[data.name];
+
+if (savedPattern) {
+  setPattern([...savedPattern]);
+  setRequiredTiles(savedPattern.filter(v => v).length);
+} else {
   setRequiredTiles(getEVTiles(data.stats));
-  setPatternModal({ data, nickname });
+}
+
+setPatternModal({ 
+  data, 
+  nickname,
+  eraserDebt: 0
+});
+
 };
 
   const confirmPattern = () => {
@@ -297,6 +336,11 @@ if (patternModal.evolvingId) {
   return (
     <div style={{ padding: 20 }}>
       <h1>Pokemon Grid</h1>
+<select value={saveSlot} onChange={(e) => setSaveSlot(e.target.value)}>
+  <option value="slot1">Slot 1</option>
+  <option value="slot2">Slot 2</option>
+  <option value="slot3">Slot 3</option>
+</select>
 <div>
   ⭐ Punkte: {points}
   <button 
@@ -353,12 +397,12 @@ if (patternModal.evolvingId) {
                     border: "1px solid black",
                    background: previewCells.includes(i)
   ? "rgba(0,0,0,0.3)"
-  : cell && !cell.color?.startsWith("linear-gradient")
-  ? cell.color
+  : cell
+  ? (cell.color?.startsWith("linear-gradient") ? undefined : cell.color)
   : "white",
 backgroundImage: cell?.color?.startsWith("linear-gradient")
   ? cell.color
-  : "none"
+  : undefined
                   }}
                 >
                   {cell && <img src={cell.sprite} width={40} />}
@@ -579,14 +623,18 @@ setSpeciesPatterns(prev => ({
 }));
 
         const newPokemon = {
-          id: Date.now(),
-          name: p.name,
-          nickname: patternModal.nickname || p.name,
-          sprite: p.sprites.front_default,
-          pattern: [...pattern],
-          color: typeColors[p.types[0].type.name] || "gray",
-eraserDebt: patternModal.eraserDebt || 0
-        };
+  id: Date.now(),
+  name: p.name,
+  nickname: patternModal.nickname || p.name,
+  sprite: p.sprites.front_default,
+  pattern: [...pattern],
+  color: p.types.length > 1
+    ? `linear-gradient(45deg, ${typeColors[p.types[0].type.name]}, ${typeColors[p.types[1].type.name]})`
+    : typeColors[p.types[0].type.name] || "gray",
+  types: p.types.map(t => t.type.name),
+  eraserDebt: patternModal.eraserDebt || 0
+};
+
 
 if (patternModal.evolvingId) {
   setTeam(prev => [...prev, newPokemon]);
