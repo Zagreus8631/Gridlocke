@@ -1,4 +1,3 @@
-// FULL FIXED VERSION – nichts entfernt, nur Bugs gefixt
 import { useState, useEffect } from "react";
 
 const emptyGrid = Array(9).fill(null);
@@ -104,12 +103,13 @@ export default function App() {
       const neighbors = [pos - 1, pos + 1, pos - 3, pos + 3];
 
       for (let n of neighbors) {
-        if (n >= 0 && n < 9 && newGrid[n]) {
-          const neighborPokemon = team.find(t => t.id === newGrid[n]);
-          if (neighborPokemon?.color === current.color) {
-            setMessage("Gleiche Farbe darf nicht angrenzen!");
-            return;
-          }
+        if (
+          n >= 0 && n < 9 &&
+          newGrid[n] &&
+          team.find(t => t.id === newGrid[n])?.color === current.color
+        ) {
+          setMessage("Gleiche Farbe darf nicht angrenzen!");
+          return;
         }
       }
     }
@@ -131,21 +131,18 @@ export default function App() {
       const pokemonInTeam = team.find(t => t.id === cell.id);
       if (!pokemonInTeam || points <= 0) return;
 
-      const positions = grid
+      const gridIndices = grid
         .map((c, i) => (c === cell.id ? i : null))
         .filter(v => v !== null);
 
-      if (positions.length <= 1) return;
-
-      const patternIndex = positions.indexOf(index);
-      if (patternIndex === -1) return;
+      if (gridIndices.length <= 1) return;
 
       const newPattern = [...pokemonInTeam.pattern];
 
       let count = 0;
       for (let i = 0; i < 9; i++) {
         if (pokemonInTeam.pattern[i]) {
-          if (count === patternIndex) {
+          if (gridIndices[count] === index) {
             newPattern[i] = false;
             break;
           }
